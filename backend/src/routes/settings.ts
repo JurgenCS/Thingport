@@ -37,7 +37,14 @@ import { type MakerworldCookieCheck, verifyMakerworldCookie } from "../services/
 import { verifyThingiverseAccessToken } from "../services/thingiverseApi";
 import { SLICER_IDS, getUserSlicer, setUserSlicer } from "../services/slicerPreferenceService";
 import { CATEGORIES_VIEWS, getCategoriesView, setCategoriesView } from "../services/categoriesViewService";
-import { DASHBOARD_WIDGETS, getDashboardWidgets, setDashboardWidgets } from "../services/dashboardWidgetsService";
+import {
+  DASHBOARD_LAYOUTS,
+  DASHBOARD_WIDGETS,
+  getDashboardLayout,
+  getDashboardWidgets,
+  setDashboardLayout,
+  setDashboardWidgets,
+} from "../services/dashboardWidgetsService";
 import {
   CONSUME_MODES,
   NOT_IMPORTED_DIR,
@@ -444,6 +451,22 @@ router.patch(
   asyncHandler(async (req, res) => {
     const body = parseBody(dashboardWidgetsSchema, req.body);
     res.json({ widgets: await setDashboardWidgets(req.userId!, body.widgets) });
+  }),
+);
+
+router.get(
+  "/settings/dashboard-layout",
+  asyncHandler(async (req, res) => {
+    res.json({ layout: await getDashboardLayout(req.userId!) });
+  }),
+);
+
+const dashboardLayoutSchema = z.object({ layout: z.enum(DASHBOARD_LAYOUTS) });
+router.patch(
+  "/settings/dashboard-layout",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(dashboardLayoutSchema, req.body);
+    res.json({ layout: await setDashboardLayout(req.userId!, body.layout) });
   }),
 );
 

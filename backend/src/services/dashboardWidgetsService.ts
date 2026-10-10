@@ -45,3 +45,18 @@ export async function setDashboardWidgets(userId: string, changes: DashboardWidg
     RETURNING "dashboardWidgets"`;
   return clean(rows[0]?.dashboardWidgets);
 }
+
+// Kept in sync by hand with the frontend's DashboardLayout. Each names where the count boxes go.
+export const DASHBOARD_LAYOUTS = ["left", "top", "right", "bottom", "topTwo", "puzzle"] as const;
+export type DashboardLayout = (typeof DASHBOARD_LAYOUTS)[number];
+
+/** A layout since removed falls back to the default rather than breaking the page. */
+export async function getDashboardLayout(userId: string): Promise<DashboardLayout> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { dashboardLayout: true } });
+  return DASHBOARD_LAYOUTS.find((layout) => layout === user?.dashboardLayout) ?? "left";
+}
+
+export async function setDashboardLayout(userId: string, layout: DashboardLayout): Promise<DashboardLayout> {
+  await prisma.user.update({ where: { id: userId }, data: { dashboardLayout: layout } });
+  return layout;
+}

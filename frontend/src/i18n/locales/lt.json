@@ -354,7 +354,20 @@
         "title": "Tvarkyti valdymo skydą",
         "subtitle": "Pasirinkite, kuriuos langelius rodo jūsų valdymo skydas.",
         "close": "Uždaryti",
-        "allHidden": "Visi valdymo skydo langeliai paslėpti."
+        "allHidden": "Visi valdymo skydo langeliai paslėpti.",
+        "sections": {
+          "layout": "Išdėstymas",
+          "panels": "Langeliai"
+        },
+        "layoutSubtitle": "Pasirinkite, kaip išdėstyti valdymo skydo langelius. Spalvota dalis rodo, kur bus skaičiai.",
+        "layouts": {
+          "left": "Skaičiai kairėje",
+          "top": "Skaičiai viršuje, trys stulpeliai",
+          "right": "Skaičiai dešinėje",
+          "bottom": "Skaičiai apačioje, trys stulpeliai",
+          "topTwo": "Skaičiai viršuje, du stulpeliai",
+          "puzzle": "Dėlionė"
+        }
       }
     },
     "adminSettings": {

@@ -46,3 +46,24 @@ describe("dashboard widget preferences", () => {
     expect((await request(app).get("/api/settings/dashboard-widgets")).status).toBe(401);
   });
 });
+
+describe("dashboard layout preference", () => {
+  const getLayout = async () => (await request(app).get("/api/settings/dashboard-layout").set(auth())).body.layout;
+  const setLayout = (layout: unknown) =>
+    request(app).patch("/api/settings/dashboard-layout").set(auth()).send({ layout });
+
+  it("starts on the default layout and keeps a chosen one", async () => {
+    expect(await getLayout()).toBe("left");
+    expect((await setLayout("top")).body.layout).toBe("top");
+    expect(await getLayout()).toBe("top");
+  });
+
+  it("rejects an unknown layout", async () => {
+    expect((await setLayout("diagonal")).status).toBe(400);
+    expect(await getLayout()).toBe("top");
+  });
+
+  it("needs a signed-in user", async () => {
+    expect((await request(app).get("/api/settings/dashboard-layout")).status).toBe(401);
+  });
+});
