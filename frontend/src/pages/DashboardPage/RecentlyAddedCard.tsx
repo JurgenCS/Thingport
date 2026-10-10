@@ -5,13 +5,10 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
-import ListItemAvatar from "@mui/material/ListItemAvatar";
 import ListItemText from "@mui/material/ListItemText";
-import Avatar from "@mui/material/Avatar";
 import NewReleasesIcon from "@mui/icons-material/NewReleases";
-import ViewInArIcon from "@mui/icons-material/ViewInAr";
-import { printsApi } from "../../api/prints";
 import type { DashboardModel } from "../../api/dashboard";
+import DashboardModelThumb from "./DashboardModelThumb";
 
 type Props = {
   models: DashboardModel[];
@@ -61,15 +58,7 @@ export default function RecentlyAddedCard({ models }: Props) {
               onClick={() => navigate(`/models/${model.id}`)}
               sx={{ borderRadius: 1, px: 1 }}
             >
-              <ListItemAvatar sx={{ minWidth: 48 }}>
-                <Avatar
-                  src={model.thumb_url ? printsApi.fileUrl(model.thumb_url) : undefined}
-                  variant="rounded"
-                  sx={{ width: 40, height: 40 }}
-                >
-                  <ViewInArIcon fontSize="small" />
-                </Avatar>
-              </ListItemAvatar>
+              <DashboardModelThumb model={model} />
               <ListItemText primary={model.name} primaryTypographyProps={{ noWrap: true }} />
               <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0, pl: 1 }}>
                 {relativeTime(model.created_at, t)}

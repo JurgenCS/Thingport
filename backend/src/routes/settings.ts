@@ -39,10 +39,13 @@ import { SLICER_IDS, getUserSlicer, setUserSlicer } from "../services/slicerPref
 import { CATEGORIES_VIEWS, getCategoriesView, setCategoriesView } from "../services/categoriesViewService";
 import {
   DASHBOARD_LAYOUTS,
+  DASHBOARD_THUMBNAILS,
   DASHBOARD_WIDGETS,
   getDashboardLayout,
+  getDashboardThumbnails,
   getDashboardWidgets,
   setDashboardLayout,
+  setDashboardThumbnails,
   setDashboardWidgets,
 } from "../services/dashboardWidgetsService";
 import {
@@ -468,6 +471,22 @@ router.patch(
   asyncHandler(async (req, res) => {
     const body = parseBody(dashboardLayoutSchema, req.body);
     res.json({ layout: await setDashboardLayout(req.userId!, body.layout) });
+  }),
+);
+
+router.get(
+  "/settings/dashboard-thumbnails",
+  asyncHandler(async (req, res) => {
+    res.json({ thumbnails: await getDashboardThumbnails(req.userId!) });
+  }),
+);
+
+const dashboardThumbnailsSchema = z.object({ thumbnails: z.enum(DASHBOARD_THUMBNAILS) });
+router.patch(
+  "/settings/dashboard-thumbnails",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(dashboardThumbnailsSchema, req.body);
+    res.json({ thumbnails: await setDashboardThumbnails(req.userId!, body.thumbnails) });
   }),
 );
 

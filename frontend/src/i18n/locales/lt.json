@@ -400,7 +400,8 @@
         "allHidden": "Visi valdymo skydo langeliai paslėpti.",
         "sections": {
           "layout": "Išdėstymas",
-          "panels": "Langeliai"
+          "panels": "Langeliai",
+          "thumbnails": "Miniatiūros"
         },
         "layoutSubtitle": "Pasirinkite, kaip išdėstyti valdymo skydo langelius. Spalvota dalis rodo, kur bus skaičiai.",
         "layouts": {
@@ -410,6 +411,17 @@
           "bottom": "Skaičiai apačioje, trys stulpeliai",
           "topTwo": "Skaičiai viršuje, du stulpeliai",
           "puzzle": "Dėlionė"
+        },
+        "thumbnailsSubtitle": "Paveikslėliai šalia modelių valdymo skydo sąrašuose.",
+        "thumbnails": {
+          "none": "Paslėpti",
+          "photos": "Nuotraukos",
+          "monochrome": "Vienspalvės"
+        },
+        "thumbnailsHelp": {
+          "none": "Sąrašuose rodomi tik pavadinimai.",
+          "photos": "Kiekvieno modelio peržiūros paveikslėlis.",
+          "monochrome": "Kiekvienas modelis nupieštas vienu tonu permatomame fone; serveris jį sukuria, kai prireikia pirmą kartą. Failai, kurių nupiešti negalima, rodo nuotrauką."
         }
       }
     },

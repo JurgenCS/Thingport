@@ -46,8 +46,7 @@ const ERROR_RETRY_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
 const PERMANENT_FAILURE_PREFIX = "permanent: ";
 const UNSUPPORTED_MARKER = `${PERMANENT_FAILURE_PREFIX}unsupported`;
 
-function recentlyFailed(plateId: string): boolean {
-  const errorPath = modelPreviewErrorPath(plateId);
+function recentlyFailed(plateId: string, errorPath = modelPreviewErrorPath(plateId)): boolean {
   try {
     const stat = fsSync.statSync(errorPath);
     if (Date.now() - stat.mtimeMs < ERROR_RETRY_COOLDOWN_MS) return true;
@@ -175,6 +174,7 @@ async function runGeneration(plateId: string, srcPath: string): Promise<void> {
     await fs.writeFile(pendingPath, new Date().toISOString());
     const simplify = await getSimplifyPreviews();
     const outcome = await renderInWorker({
+      kind: "glb",
       srcPath,
       destPath: tmp,
       options: { simplifyTo: simplify ? SIMPLIFY_TARGET_TRIANGLES : null },
@@ -209,6 +209,76 @@ async function runGeneration(plateId: string, srcPath: string): Promise<void> {
     await fs.rm(pendingPath, { force: true }).catch(() => undefined);
     inFlight.delete(plateId);
   }
+}
+
+// Pictures of a model for small slots like the dashboard lists: near-black on transparent.
+// They share the GLB queue and limits, so the two never render at once.
+
+/** Server-side picture formats; STEP needs a CAD kernel the server doesn't have. */
+export const MODEL_IMAGE_EXTS = new Set([".stl", ".obj", ".3mf"]);
+// Part of the filename, so changing the look regenerates older pictures on next request.
+const MODEL_IMAGE_VERSION = 2;
+const MODEL_IMAGE_SIZE = 128;
+// Shading scales this down, so it comes out between near-black in shadow and charcoal in the light.
+// The dashboard inverts it for the dark theme.
+const MODEL_IMAGE_COLOR = "#5a5a5a";
+
+export function modelImagePath(plateId: string): string {
+  return path.join(MODEL_PREVIEWS, `${plateId}.image.v${MODEL_IMAGE_VERSION}.png`);
+}
+function modelImageErrorPath(plateId: string): string {
+  return path.join(MODEL_PREVIEWS, `${plateId}.image.v${MODEL_IMAGE_VERSION}.error`);
+}
+
+export function canRenderModelImage(filename: string): boolean {
+  return MODEL_IMAGE_EXTS.has(path.extname(filename).toLowerCase());
+}
+
+const imagesInFlight = new Set<string>();
+
+/** Never throws. Concurrent calls for the same plate no-op; a failure isn't retried for a while. */
+export async function generateModelImage(plateId: string, srcPath: string, filename: string): Promise<void> {
+  const errorPath = modelImageErrorPath(plateId);
+  if (!canRenderModelImage(filename) || fsSync.existsSync(modelImagePath(plateId))) return;
+  if (imagesInFlight.has(plateId) || recentlyFailed(plateId, errorPath)) return;
+  imagesInFlight.add(plateId);
+  const run = queue.then(async () => {
+    const dest = modelImagePath(plateId);
+    const tmp = `${dest}.${process.pid}.${Date.now()}.tmp`;
+    try {
+      const outcome = await renderInWorker({
+        kind: "image",
+        srcPath,
+        destPath: tmp,
+        ext: path.extname(filename).toLowerCase(),
+        image: { size: MODEL_IMAGE_SIZE, color: MODEL_IMAGE_COLOR },
+      });
+      if (outcome.status === "ok") {
+        await fs.rename(tmp, dest);
+        await fs.rm(errorPath, { force: true });
+      } else {
+        const reason =
+          outcome.status === "error" ? outcome.error : outcome.status === "limit" ? outcome.reason : outcome.status;
+        if (outcome.status === "error") console.error(`Model picture failed for plate ${plateId}:`, reason);
+        // Only an unexpected error is worth another try later; the rest would just repeat.
+        await fs.writeFile(errorPath, outcome.status === "error" ? reason : `${PERMANENT_FAILURE_PREFIX}${reason}`);
+      }
+    } catch (err) {
+      console.error(`Model picture failed for plate ${plateId}:`, err);
+      await fs.writeFile(errorPath, String(err)).catch(() => undefined);
+    } finally {
+      await fs.rm(tmp, { force: true }).catch(() => undefined);
+      imagesInFlight.delete(plateId);
+    }
+  });
+  queue = run;
+  await run;
+}
+
+export function modelImageState(plateId: string): "ready" | "generating" | "failed" {
+  if (fsSync.existsSync(modelImagePath(plateId))) return "ready";
+  if (imagesInFlight.has(plateId)) return "generating";
+  return recentlyFailed(plateId, modelImageErrorPath(plateId)) ? "failed" : "generating";
 }
 
 type GlbSummary = { triangles: number; simplified: boolean };

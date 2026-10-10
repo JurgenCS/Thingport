@@ -720,6 +720,13 @@ const SIMPLIFY_MIN_MESH_TRIANGLES = 2_000;
 const SIMPLIFY_MAX_ERROR = 0.01;
 const UNUSED_VERTEX = 0xffffffff;
 
+/** The 3MF as a three.js group, one child group per plate, already turned Y-up. */
+export async function loadThreeMfGroup(srcPath: string): Promise<import("three").Group | PreviewRefusal> {
+  const parsed = await parseThreeMfFast(srcPath);
+  if (typeof parsed === "string") return parsed;
+  return buildGlbGroup(parsed);
+}
+
 export type SimplifiedSummary = { from: number; to: number };
 
 function meshTriangleCount(mesh: import("three").Mesh): number {

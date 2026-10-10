@@ -3,6 +3,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { prisma } from "../db";
 import { RENDERABLE_MODEL_EXTS } from "../config";
+import { canRenderModelImage, modelImagePath } from "./modelPreviewCache";
 import { plateThumbExists, plateThumbPath } from "./printService";
 
 const TOP_MODELS_PREVIEW = 3;
@@ -15,6 +16,8 @@ export type DashboardModel = {
   id: string;
   name: string;
   thumbUrl: string | null;
+  /** The model drawn in one colour. Unversioned until it exists: asking for it queues it. */
+  modelImageUrl: string | null;
   viewCount: number;
   printCount: number;
   createdAt: Date;
@@ -51,11 +54,20 @@ type PrintForModelSummary = {
   viewCount: number;
   printCount: number;
   createdAt: Date;
-  plates: { id: string }[];
+  plates: { id: string; filename: string }[];
 };
 
+function modelImageUrl(plate: { id: string; filename: string }): string | null {
+  if (!canRenderModelImage(plate.filename)) return null;
+  const file = modelImagePath(plate.id);
+  return fs.existsSync(file)
+    ? `/plate/${plate.id}/model.png?v=${fs.statSync(file).mtimeMs}`
+    : `/plate/${plate.id}/model.png`;
+}
+
 export function toModelSummary(print: PrintForModelSummary): DashboardModel {
-  const plateId = print.plates[0]?.id ?? null;
+  const first = print.plates[0];
+  const plateId = first?.id ?? null;
   let thumbUrl: string | null = null;
   if (plateId && plateThumbExists(plateId)) {
     const mtime = fs.statSync(plateThumbPath(plateId)).mtimeMs;
@@ -65,6 +77,7 @@ export function toModelSummary(print: PrintForModelSummary): DashboardModel {
     id: print.id,
     name: print.name,
     thumbUrl,
+    modelImageUrl: first ? modelImageUrl(first) : null,
     viewCount: print.viewCount,
     printCount: print.printCount,
     createdAt: print.createdAt,
@@ -77,7 +90,7 @@ export const MODEL_SUMMARY_SELECT = {
   viewCount: true,
   printCount: true,
   createdAt: true,
-  plates: { take: 1, orderBy: { position: "asc" as const }, select: { id: true } },
+  plates: { take: 1, orderBy: { position: "asc" as const }, select: { id: true, filename: true } },
 };
 
 async function fetchTopViewed(userId: string, limit: number): Promise<DashboardModel[]> {

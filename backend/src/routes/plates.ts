@@ -24,7 +24,15 @@ import {
 } from "../services/printService";
 import { addGeneratedPreviewImageIfNone } from "../services/previewImageService";
 import { printOutById } from "../services/printLoader";
-import { generateModelPreviewGlb, modelPreviewGlbPath, modelPreviewState } from "../services/modelPreviewCache";
+import {
+  generateModelPreviewGlb,
+  modelPreviewGlbPath,
+  modelPreviewState,
+  generateModelImage,
+  modelImagePath,
+  modelImageState,
+  canRenderModelImage,
+} from "../services/modelPreviewCache";
 import { getPreviewMode } from "../services/settingsService";
 
 const router = Router();
@@ -182,6 +190,37 @@ router.get(
     res.setHeader("Content-Type", "model/gltf-binary");
     res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
     res.sendFile(path.resolve(glbPath));
+  }),
+);
+
+// The model drawn in one colour, for small slots like the dashboard lists. Built on first
+// request for models from before pictures existed; new uploads queue theirs straight away.
+router.get(
+  "/plate/:plateId/model.png",
+  asyncHandler(async (req, res) => {
+    const plate = await prisma.plate.findFirst({
+      where: { id: req.params.plateId, print: { userId: req.userId } },
+    });
+    if (!plate) throw new HttpError(404, "Not found");
+    const imagePath = modelImagePath(plate.id);
+    if (!fs.existsSync(imagePath)) {
+      if (!canRenderModelImage(plate.filename))
+        throw new HttpError(404, "No picture for this file type", "PREVIEW_UNSUPPORTED");
+      if ((await getPreviewMode()) === "disabled") {
+        throw new HttpError(404, "Preview generation is disabled", "PREVIEW_DISABLED");
+      }
+      const srcPath = resolvePlateFilePath(plate);
+      if (!srcPath) throw new HttpError(404, "Model file is missing", "PREVIEW_FAILED");
+      void generateModelImage(plate.id, srcPath, plate.filename);
+      if (modelImageState(plate.id) === "failed") {
+        throw new HttpError(404, "No picture could be made for this model", "PREVIEW_FAILED");
+      }
+      throw new HttpError(404, "Picture is being made", "PREVIEW_GENERATING");
+    }
+    res.setHeader("Content-Type", "image/png");
+    // Versioned URLs never change; the bare one is how a missing picture gets asked for.
+    res.setHeader("Cache-Control", req.query.v ? "private, max-age=31536000, immutable" : "private, no-cache");
+    res.sendFile(path.resolve(imagePath));
   }),
 );
 

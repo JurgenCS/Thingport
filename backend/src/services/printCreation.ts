@@ -16,7 +16,7 @@ import {
   renderPlateStoragePath,
   saveThumbFromFile,
 } from "./printService";
-import { generateModelPreviewGlb } from "./modelPreviewCache";
+import { generateModelPreviewGlb, canRenderModelImage, generateModelImage } from "./modelPreviewCache";
 import { deleteNormalized3mf } from "./normalized3mfCache";
 import { getPreviewMode } from "./settingsService";
 import { Prisma } from "@prisma/client";
@@ -92,6 +92,10 @@ async function thumbnailAndSniff(plateId: string, filename: string, mime: string
     await ensurePlateThumbnail(plateId, effectivePath);
     // "on-demand" builds the preview on first view, "disabled" never. Not awaited: it can be slow.
     if ((await getPreviewMode()) === "automatic") void generateModelPreviewGlb(plateId, effectivePath);
+  }
+  // Queued behind the GLB, which the model page needs first.
+  if (canRenderModelImage(filename) && (await getPreviewMode()) === "automatic") {
+    void generateModelImage(plateId, effectivePath, filename);
   }
 }
 
