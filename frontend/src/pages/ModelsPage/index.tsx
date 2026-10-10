@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
@@ -7,7 +7,7 @@ import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import { UnauthorizedError } from "../../api/client";
 import { type Print, type PrintSortMode, printsApi } from "../../api/prints";
-import { type Category, type CategoryMetaInput, categoriesApi } from "../../api/categories";
+import { type Category, type CategoryKind, type CategoryMetaInput, categoriesApi } from "../../api/categories";
 import { type CategoriesView, type PreviewMode } from "../../api/settings";
 import type { AuthUser } from "../../api/auth";
 import { type ResolvedTheme } from "../../constants/settingsOptions";
@@ -20,6 +20,7 @@ import CategoriesViewToggle from "./CategoriesViewToggle";
 import CategoryBanner from "./CategoryBanner";
 import ModelCard from "./ModelCard";
 import SortTabs from "./SortTabs";
+import ModelsManagerDialog, { type ModelsManagerSection } from "./ModelsManagerDialog";
 
 const PAGE_SIZE = 24;
 
@@ -59,6 +60,10 @@ export default function ModelsPage({
   const [categoriesView, setCategoriesView] = useCategoriesView();
   const panelKind = categoriesView === "folders" ? "folder" : "category";
   const panelCategories = useMemo(() => categories.filter((c) => c.kind === panelKind), [categories, panelKind]);
+  const [managerSection, setManagerSection] = useState<ModelsManagerSection | null>(null);
+  // Bumped when AI categorization changes many models at once, to refetch the grid.
+  const [libraryVersion, setLibraryVersion] = useState(0);
+  const refreshLibrary = useCallback(() => setLibraryVersion((version) => version + 1), []);
   const sortModeParam = searchParams.get("orderBy");
   const sortMode: PrintSortMode =
     sortModeParam === "popular" || sortModeParam === "downloads" ? sortModeParam : "newest";
@@ -161,7 +166,7 @@ export default function ModelsPage({
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryIdFilter, printsVersion, sortMode]);
+  }, [categoryIdFilter, printsVersion, libraryVersion, sortMode]);
 
   const loadMore = async () => {
     if (loadingMore || !hasMore) return;
@@ -185,9 +190,9 @@ export default function ModelsPage({
 
   const loadMoreSentinelRef = useInfiniteScroll(loadMore, hasMore, loading || loadingMore);
 
-  const createCategory = async (name: string, parentId: string | null) => {
+  const createCategory = async (name: string, parentId: string | null, kind: CategoryKind) => {
     try {
-      await categoriesApi.create(name, [], parentId || undefined, panelKind);
+      await categoriesApi.create(name, [], parentId || undefined, kind);
       onCategoriesChanged();
     } catch (err) {
       handleError(err, t("models:errors.createCategoryFailed"));
@@ -260,6 +265,20 @@ export default function ModelsPage({
         <CategoriesViewToggle value={categoriesView} onChange={switchCategoriesView} />
         <SortTabs value={sortMode} onChange={setSortMode} />
       </Box>
+      <ModelsManagerDialog
+        open={managerSection}
+        onClose={() => setManagerSection(null)}
+        categories={categories}
+        onCreate={createCategory}
+        onRename={renameCategory}
+        onDelete={deleteCategory}
+        onReorder={reorderCategories}
+        onMove={moveCategory}
+        onUpdateMeta={updateCategoryMeta}
+        onPrintUpdated={(updated) => setItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))}
+        onLibraryChanged={refreshLibrary}
+        onUnauthorized={onUnauthorized}
+      />
       <Stack direction="row" spacing={2} alignItems="flex-start">
         <CategoriesPanel
           kind={panelKind}
@@ -267,12 +286,7 @@ export default function ModelsPage({
           loading={categoriesLoading || categoriesView === null}
           selectedId={categoryId}
           onSelect={onSelectCategory}
-          onCreate={createCategory}
-          onRename={renameCategory}
-          onDelete={deleteCategory}
-          onReorder={reorderCategories}
-          onMove={moveCategory}
-          onUpdateMeta={updateCategoryMeta}
+          onManage={() => setManagerSection(panelKind === "folder" ? "folders" : "categories")}
         />
         <Box sx={{ flex: 1, minWidth: 0 }}>
           {selectedCategory?.meta_title && (

@@ -518,6 +518,45 @@
         "cleared": "Access Token removed.",
         "failed": "Failed to save Thingiverse settings."
       },
+      "ai": {
+        "heading": "AI",
+        "connection": {
+          "heading": "Connect AI",
+          "subtitle": "An OpenAI-compatible service that Thingport's AI features use.",
+          "baseUrl": "API base URL",
+          "model": "Model name",
+          "apiKey": "API key",
+          "keySet": "A key is saved. Type a new one to replace it.",
+          "clearKey": "Clear API key",
+          "keyWillClear": "The key will be removed when you save",
+          "concurrency": "Concurrent requests (1-4)",
+          "timeout": "Request timeout (ms)",
+          "writeOnly": "The saved API key is never shown. Leave the field blank to keep it.",
+          "test": "Test connection",
+          "testing": "Testing…",
+          "testSuccess": "Connected to {{model}} in {{latency}} ms.",
+          "testFailed": "Connection test failed.",
+          "save": "Save connection",
+          "saving": "Checking connection…",
+          "saved": "AI connection saved.",
+          "failed": "Failed to load or save the AI connection."
+        }
+      },
+      "aiCategorization": {
+        "heading": "AI model categorization",
+        "subtitle": "Sort models into their owner's categories with the connected AI.",
+        "privacy": "With a third-party API, model titles, descriptions and tags leave this server. Images are sent only when enabled.",
+        "mode": "Mode",
+        "off": "Off",
+        "suggest": "Suggest for review",
+        "auto": "Apply automatically",
+        "threshold": "Auto-apply confidence threshold",
+        "onImport": "Categorize new imports",
+        "sendImage": "Send the first preview image",
+        "save": "Save settings",
+        "saved": "AI categorization settings saved.",
+        "failed": "Failed to load or save AI categorization settings."
+      },
       "session": {
         "heading": "Session Length",
         "subtitle": "Control how long a signed-in session stays valid for the whole instance.",
@@ -1514,6 +1553,47 @@
       "importedFrom": "Imported from {{provider}}",
       "uploadedDirectly": "Uploaded directly to Thingport"
     },
+    "aiCategorization": {
+      "folderSkipped": "Models in folders are left as they are: folders are your own tree.",
+      "section": "AI Categorization",
+      "recategorize": "Recategorize with AI",
+      "runAll": "Recategorize all with AI",
+      "runHint": "Sorts uncategorized models, and can re-check ones that already have a category.",
+      "runTitle": "Recategorize models with AI",
+      "countUncategorized": "Uncategorized models are always included: {{count}}",
+      "includeAi": "Include models last categorized by AI: {{count}}",
+      "includeRule": "Include models categorized by source rules: {{count}}",
+      "includeLegacy": "Include older categorized models: {{count}}",
+      "skipped": "{{manual}} manual models and {{folder}} folder models are always skipped.",
+      "progress": "Processed {{done}} of {{total}}, {{applied}} applied, {{suggested}} suggested, {{failed}} failed.",
+      "finished": "Finished: {{applied}} applied, {{suggested}} suggested, {{failed}} failed.",
+      "cancel": "Cancel run",
+      "start": "Start",
+      "suggestionsTitle": "Pending suggestions ({{count}})",
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all",
+      "acceptSelected": "Accept selected",
+      "rejectSelected": "Reject selected",
+      "accept": "Accept",
+      "reject": "Reject",
+      "acceptDone": "Accepted {{count}} suggestion(s).",
+      "rejectDone": "Rejected {{count}} suggestion(s).",
+      "firstPage": "Showing {{shown}} of {{total}} suggestions.",
+      "loadMore": "Load more",
+      "noSuggestions": "No pending suggestions.",
+      "suggestionLabel": "AI suggestion",
+      "byAi": "by AI",
+      "accepted": "AI suggestion accepted.",
+      "rejected": "AI suggestion rejected.",
+      "confirmManual": "{{name}} has a category you chose manually. Replace it with an AI result?",
+      "failed": "AI recategorization failed.",
+      "outcome": {
+        "applied": "AI category applied.",
+        "suggested": "AI suggestion added for review.",
+        "no_match": "AI couldn't find a suitable category.",
+        "unchanged": "The category was left unchanged."
+      }
+    },
     "detail": {
       "subtitle": "Model",
       "preview3d": "3D Preview",
@@ -1837,6 +1917,9 @@
         "addSubcategory": "Add subfolder",
         "noCategories": "No folders yet. Add one, or upload a folder of models."
       }
+    },
+    "manager": {
+      "title": "Manage categories"
     }
   }
 }
