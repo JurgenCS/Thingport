@@ -150,9 +150,11 @@ describe("featured model", () => {
     const today = await featured("2026-10-10");
     expect(models.map((m) => m.id)).toContain(today.id);
     expect((await featured("2026-10-10")).id).toBe(today.id);
-    // Over a few days the pick moves between models.
-    const days = await Promise.all(["11", "12", "13", "14", "15", "16"].map((d) => featured(`2026-10-${d}`)));
-    expect(new Set(days.map((print) => print.id)).size).toBeGreaterThan(1);
+    // Over a month the pick moves between models. Thirty days all landing on one of three would be a
+    // 1 in 10^14 chance, so this can't fail by bad luck.
+    const days = Array.from({ length: 30 }, (_, i) => `2026-11-${String(i + 1).padStart(2, "0")}`);
+    const picks = await Promise.all(days.map((day) => featured(day)));
+    expect(new Set(picks.map((print) => print.id)).size).toBeGreaterThan(1);
   });
 
   it("rejects a malformed date", async () => {

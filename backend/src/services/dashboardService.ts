@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import path from "node:path";
 import { createHash } from "node:crypto";
 import { prisma } from "../db";
 import { RENDERABLE_MODEL_EXTS } from "../config";
@@ -219,20 +218,24 @@ export function getTopAuthorsList(userId: string): Promise<DashboardAuthor[]> {
  * caller's own date, so the pick changes at the user's midnight rather than the server's.
  */
 export async function getFeaturedModelId(userId: string, day: string): Promise<string | null> {
-  const plates = await prisma.plate.findMany({
-    where: { print: { userId } },
-    select: { printId: true, filename: true },
-    orderBy: [{ printId: "asc" }, { position: "asc" }],
-  });
-  const candidates: string[] = [];
-  const seen = new Set<string>();
-  for (const plate of plates) {
-    // The first plate is the one a preview shows.
-    if (seen.has(plate.printId)) continue;
-    seen.add(plate.printId);
-    if (RENDERABLE_MODEL_EXTS.has(path.extname(plate.filename).toLowerCase())) candidates.push(plate.printId);
-  }
-  if (!candidates.length) return null;
+  // Plates are renumbered from 0 on every delete and reorder, so position 0 is the one a preview shows.
+  const where = {
+    userId,
+    plates: {
+      some: {
+        position: 0,
+        OR: [...RENDERABLE_MODEL_EXTS].map((ext) => ({ filename: { endsWith: ext, mode: "insensitive" as const } })),
+      },
+    },
+  };
+  const count = await prisma.print.count({ where });
+  if (!count) return null;
   const seed = createHash("sha256").update(`${userId}:${day}`).digest().readUInt32BE(0);
-  return candidates[seed % candidates.length];
+  const pick = await prisma.print.findFirst({
+    where,
+    orderBy: { id: "asc" },
+    skip: seed % count,
+    select: { id: true },
+  });
+  return pick?.id ?? null;
 }

@@ -1,5 +1,8 @@
-// Free, keyless services called from the browser: Open-Meteo for the forecast and place search,
-// OpenStreetMap's Nominatim to name a detected location.
+import { authHeaders } from "./auth";
+import { apiBase, assertOk } from "../api/client";
+
+// The dashboard's weather, through our own server, which talks to the weather and map services,
+// caches their answers and keeps within their usage rules.
 
 export type Weather = {
   temperature: number;
@@ -12,74 +15,27 @@ export type Weather = {
 
 export type Place = { name: string; admin1?: string; country?: string; latitude: number; longitude: number };
 
-const LATER_HOURS = 6;
-const CACHE_KEY = "thingport.weather";
-const CACHE_TTL_MS = 30 * 60 * 1000;
-
-type Cached = { at: number; lat: number; lon: number; weather: Weather };
-
-function readCache(lat: number, lon: number): Weather | null {
-  try {
-    const cached = JSON.parse(localStorage.getItem(CACHE_KEY) ?? "null") as Cached | null;
-    if (cached && cached.lat === lat && cached.lon === lon && Date.now() - cached.at < CACHE_TTL_MS)
-      return cached.weather;
-  } catch {
-    // An unreadable cache just means asking again.
-  }
-  return null;
-}
-
 export async function fetchWeather(lat: number, lon: number): Promise<Weather> {
-  const cached = readCache(lat, lon);
-  if (cached) return cached;
-  const params = new URLSearchParams({
-    latitude: String(lat),
-    longitude: String(lon),
-    current: "temperature_2m,weather_code",
-    hourly: "temperature_2m,weather_code",
-    daily: "temperature_2m_max,temperature_2m_min",
-    forecast_hours: String(LATER_HOURS + 1),
-    forecast_days: "1",
-    timezone: "auto",
-  });
-  const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
-  if (!res.ok) throw new Error(`Weather service returned HTTP ${res.status}`);
-  const data = await res.json();
-  const weather: Weather = {
-    temperature: Math.round(data.current.temperature_2m),
-    code: data.current.weather_code,
-    high: Math.round(data.daily.temperature_2m_max[0]),
-    low: Math.round(data.daily.temperature_2m_min[0]),
-    later: {
-      hours: LATER_HOURS,
-      temperature: Math.round(data.hourly.temperature_2m[LATER_HOURS]),
-      code: data.hourly.weather_code[LATER_HOURS],
-    },
-  };
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), lat, lon, weather } satisfies Cached));
-  } catch {
-    // Not caching only costs a request next time.
-  }
-  return weather;
+  const params = new URLSearchParams({ lat: String(lat), lon: String(lon) });
+  const res = await fetch(`${apiBase()}/dashboard/weather?${params}`, { headers: authHeaders() });
+  assertOk(res, "Failed to load the weather");
+  return res.json();
 }
 
 export async function searchPlaces(query: string, language: string): Promise<Place[]> {
-  const params = new URLSearchParams({ name: query, count: "5", language, format: "json" });
-  const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`);
-  if (!res.ok) throw new Error(`Place search returned HTTP ${res.status}`);
-  return ((await res.json()).results ?? []) as Place[];
+  const params = new URLSearchParams({ q: query, lang: language });
+  const res = await fetch(`${apiBase()}/dashboard/weather/places?${params}`, { headers: authHeaders() });
+  assertOk(res, "Place search failed");
+  return (await res.json()).places as Place[];
 }
 
 /** The town or city at a point, or null when it can't be named. */
 export async function placeName(lat: number, lon: number, language: string): Promise<string | null> {
   try {
-    const params = new URLSearchParams({ lat: String(lat), lon: String(lon), format: "json", zoom: "10" });
-    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?${params}`, {
-      headers: { "Accept-Language": language },
-    });
-    const address = (await res.json()).address ?? {};
-    return address.city || address.town || address.village || address.county || null;
+    const params = new URLSearchParams({ lat: String(lat), lon: String(lon), lang: language });
+    const res = await fetch(`${apiBase()}/dashboard/weather/place-name?${params}`, { headers: authHeaders() });
+    if (!res.ok) return null;
+    return (await res.json()).name as string | null;
   } catch {
     return null;
   }

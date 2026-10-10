@@ -73,7 +73,10 @@ type RenderOutcome =
 
 /** Resolves once the thread is gone, so its memory is freed before the next render. Never
  * rejects. Mesh data lives outside the V8 heap cap, so a watchdog also polls process RSS. */
-function renderInWorker(input: ModelPreviewWorkerInput): Promise<RenderOutcome> {
+function renderInWorker(
+  input: ModelPreviewWorkerInput,
+  timeoutSeconds = MODEL_PREVIEW_TIMEOUT_SECONDS,
+): Promise<RenderOutcome> {
   return new Promise((resolve) => {
     const maxGrowthBytes = MODEL_PREVIEW_MAX_MEMORY_MB * 1024 * 1024;
     const baselineRss = process.memoryUsage.rss();
@@ -105,8 +108,8 @@ function renderInWorker(input: ModelPreviewWorkerInput): Promise<RenderOutcome> 
       }
     }, MEMORY_POLL_MS);
     const timeout = setTimeout(
-      () => finish({ status: "limit", reason: `took longer than ${MODEL_PREVIEW_TIMEOUT_SECONDS}s` }),
-      MODEL_PREVIEW_TIMEOUT_SECONDS * 1000,
+      () => finish({ status: "limit", reason: `took longer than ${timeoutSeconds}s` }),
+      timeoutSeconds * 1000,
     );
 
     worker.once("message", (result: ModelPreviewWorkerResult) => finish(result));
@@ -124,8 +127,32 @@ function renderInWorker(input: ModelPreviewWorkerInput): Promise<RenderOutcome> 
 const inFlight = new Set<string>();
 const crashWarned = new Set<string>();
 
-// One render at a time: parallel renders would multiply peak memory past the limit.
-let queue: Promise<void> = Promise.resolve();
+// One render at a time: parallel renders would multiply peak memory past the limit. A GLB someone is
+// waiting on in the 3D viewer goes ahead of any dashboard picture, however many of those are queued.
+type RenderJob = () => Promise<void>;
+const glbJobs: RenderJob[] = [];
+const imageJobs: RenderJob[] = [];
+let rendering = false;
+
+function scheduleRender(kind: "glb" | "image", job: RenderJob): Promise<void> {
+  return new Promise((resolve) => {
+    (kind === "glb" ? glbJobs : imageJobs).push(() => job().finally(resolve));
+    void drainRenders();
+  });
+}
+
+async function drainRenders(): Promise<void> {
+  if (rendering) return;
+  rendering = true;
+  try {
+    for (let job = glbJobs.shift() ?? imageJobs.shift(); job; job = glbJobs.shift() ?? imageJobs.shift()) {
+      // A job settles its own promise; one failing mustn't stop the rest.
+      await job().catch(() => undefined);
+    }
+  } finally {
+    rendering = false;
+  }
+}
 
 /** Never throws. Concurrent calls for the same plate no-op. */
 export async function generateModelPreviewGlb(plateId: string, srcPath: string): Promise<void> {
@@ -141,9 +168,7 @@ export async function generateModelPreviewGlb(plateId: string, srcPath: string):
     return;
   }
   inFlight.add(plateId);
-  const run = queue.then(() => runGeneration(plateId, srcPath));
-  queue = run;
-  await run;
+  await scheduleRender("glb", () => runGeneration(plateId, srcPath));
 }
 
 /** "failed" won't retry soon; "unsupported" is left to the browser's loaders. */
@@ -212,7 +237,7 @@ async function runGeneration(plateId: string, srcPath: string): Promise<void> {
 }
 
 // Pictures of a model for small slots like the dashboard lists: near-black on transparent.
-// They share the GLB queue and limits, so the two never render at once.
+// They share the GLB queue and memory limit, so the two never render at once, but wait behind GLBs.
 
 /** Server-side picture formats; STEP needs a CAD kernel the server doesn't have. */
 export const MODEL_IMAGE_EXTS = new Set([".stl", ".obj", ".3mf"]);
@@ -222,6 +247,8 @@ const MODEL_IMAGE_SIZE = 128;
 // Shading scales this down, so it comes out between near-black in shadow and charcoal in the light.
 // The dashboard inverts it for the dark theme.
 const MODEL_IMAGE_COLOR = "#5a5a5a";
+// A thumbnail isn't worth holding up the queue the way a model's own 3D preview is.
+const MODEL_IMAGE_TIMEOUT_SECONDS = 20;
 
 export function modelImagePath(plateId: string): string {
   return path.join(MODEL_PREVIEWS, `${plateId}.image.v${MODEL_IMAGE_VERSION}.png`);
@@ -242,17 +269,20 @@ export async function generateModelImage(plateId: string, srcPath: string, filen
   if (!canRenderModelImage(filename) || fsSync.existsSync(modelImagePath(plateId))) return;
   if (imagesInFlight.has(plateId) || recentlyFailed(plateId, errorPath)) return;
   imagesInFlight.add(plateId);
-  const run = queue.then(async () => {
+  await scheduleRender("image", async () => {
     const dest = modelImagePath(plateId);
     const tmp = `${dest}.${process.pid}.${Date.now()}.tmp`;
     try {
-      const outcome = await renderInWorker({
-        kind: "image",
-        srcPath,
-        destPath: tmp,
-        ext: path.extname(filename).toLowerCase(),
-        image: { size: MODEL_IMAGE_SIZE, color: MODEL_IMAGE_COLOR },
-      });
+      const outcome = await renderInWorker(
+        {
+          kind: "image",
+          srcPath,
+          destPath: tmp,
+          ext: path.extname(filename).toLowerCase(),
+          image: { size: MODEL_IMAGE_SIZE, color: MODEL_IMAGE_COLOR },
+        },
+        MODEL_IMAGE_TIMEOUT_SECONDS,
+      );
       if (outcome.status === "ok") {
         await fs.rename(tmp, dest);
         await fs.rm(errorPath, { force: true });
@@ -271,14 +301,19 @@ export async function generateModelImage(plateId: string, srcPath: string, filen
       imagesInFlight.delete(plateId);
     }
   });
-  queue = run;
-  await run;
 }
 
-export function modelImageState(plateId: string): "ready" | "generating" | "failed" {
+/** "unsupported" is a file the renderer read but couldn't draw, e.g. a 3MF layout it doesn't know. */
+export function modelImageState(plateId: string): "ready" | "generating" | "failed" | "unsupported" {
   if (fsSync.existsSync(modelImagePath(plateId))) return "ready";
   if (imagesInFlight.has(plateId)) return "generating";
-  return recentlyFailed(plateId, modelImageErrorPath(plateId)) ? "failed" : "generating";
+  const errorPath = modelImageErrorPath(plateId);
+  if (!recentlyFailed(plateId, errorPath)) return "generating";
+  try {
+    return fsSync.readFileSync(errorPath, "utf-8") === UNSUPPORTED_MARKER ? "unsupported" : "failed";
+  } catch {
+    return "failed";
+  }
 }
 
 type GlbSummary = { triangles: number; simplified: boolean };

@@ -212,7 +212,11 @@ router.get(
       const srcPath = resolvePlateFilePath(plate);
       if (!srcPath) throw new HttpError(404, "Model file is missing", "PREVIEW_FAILED");
       void generateModelImage(plate.id, srcPath, plate.filename);
-      if (modelImageState(plate.id) === "failed") {
+      const state = modelImageState(plate.id);
+      if (state === "unsupported") {
+        throw new HttpError(404, "This file's layout can't be drawn by the server", "PREVIEW_UNSUPPORTED");
+      }
+      if (state === "failed") {
         throw new HttpError(404, "No picture could be made for this model", "PREVIEW_FAILED");
       }
       throw new HttpError(404, "Picture is being made", "PREVIEW_GENERATING");

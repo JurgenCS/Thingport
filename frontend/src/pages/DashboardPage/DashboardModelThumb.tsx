@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Avatar from "@mui/material/Avatar";
 import ListItemAvatar from "@mui/material/ListItemAvatar";
 import ViewInArIcon from "@mui/icons-material/ViewInAr";
@@ -11,22 +11,46 @@ import { useDashboardThumbnails } from "../../hooks/useDashboardThumbnails";
  * one-colour drawing of it. Until a drawing is made (the first request queues it) or for files it
  * can't draw, the photo stands in.
  */
+// A drawing that isn't ready yet is asked for again after these waits, then the photo stays.
+const RETRY_DELAYS_MS = [2000, 4000, 8000, 16000];
+
 export default function DashboardModelThumb({ model }: { model: DashboardModel }) {
   const [thumbnails] = useDashboardThumbnails();
-  const [pictureFailed, setPictureFailed] = useState(false);
+  // Failed loads so far; past the last retry the photo stays for good.
+  const [attempt, setAttempt] = useState(0);
+  const [waiting, setWaiting] = useState(false);
+  const pictureFailed = attempt > RETRY_DELAYS_MS.length;
+
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = window.setTimeout(() => setWaiting(false), RETRY_DELAYS_MS[attempt - 1]);
+    return () => window.clearTimeout(timer);
+  }, [waiting, attempt]);
+
   // Hidden until the choice is known, so the lists don't flash photos first.
   if (thumbnails === null || thumbnails === "none") return null;
-  const picture =
-    thumbnails === "monochrome" && model.model_image_url && !pictureFailed
-      ? printsApi.fileUrl(model.model_image_url)
-      : null;
+  const url = thumbnails === "monochrome" && !pictureFailed && !waiting ? model.model_image_url : null;
+  // Each retry asks afresh, so a cached "not ready" answer isn't reused.
+  const picture = url
+    ? printsApi.fileUrl(attempt ? `${url}${url.includes("?") ? "&" : "?"}attempt=${attempt}` : url)
+    : null;
   const photo = model.thumb_url ? printsApi.fileUrl(model.thumb_url) : undefined;
   return (
     <ListItemAvatar sx={{ minWidth: 48 }}>
       <Avatar
         src={picture ?? photo}
         variant="rounded"
-        slotProps={{ img: { onError: () => picture && setPictureFailed(true) } }}
+        slotProps={{
+          img: {
+            // Rows scrolled out of a long list don't ask the server to draw anything yet.
+            loading: "lazy",
+            onError: () => {
+              if (!picture) return;
+              setAttempt((count) => count + 1);
+              setWaiting(true);
+            },
+          },
+        }}
         sx={{
           width: 40,
           height: 40,
