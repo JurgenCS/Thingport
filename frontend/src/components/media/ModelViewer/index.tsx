@@ -55,6 +55,10 @@ type ModelViewerProps = {
   autoRotate?: boolean;
   /** Camera preset to frame the model from on load. Unset keeps per-format defaults. */
   initialCameraView?: CameraView;
+  /** The small axis cube in the corner. */
+  showOrientationGizmo?: boolean;
+  /** Behind the model; "transparent" lets the surrounding card show through. */
+  background?: string;
 };
 
 // Appearance props that change without reloading the model.
@@ -130,6 +134,8 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
     autoRotate = false,
     buildPlateForMeshes = false,
     initialCameraView,
+    showOrientationGizmo = true,
+    background = "action.hover",
   },
   ref,
 ) {
@@ -535,10 +541,14 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
         camera.updateProjectionMatrix();
       };
       window.addEventListener("resize", onResize);
-      const gizmo = createOrientationGizmo(renderer);
+      // Its box can change size without the window doing so, e.g. a dashboard card when the layout changes.
+      const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(onResize);
+      resizeObserver?.observe(mount);
+      const gizmo = showOrientationGizmo ? createOrientationGizmo(renderer) : null;
       teardown = () => {
         window.removeEventListener("resize", onResize);
-        gizmo.dispose();
+        resizeObserver?.disconnect();
+        gizmo?.dispose();
       };
 
       // Eased toward over a few frames so button zooms don't jump.
@@ -576,7 +586,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
             .add(keyLight.target.position);
         }
         renderer.render(scene, camera);
-        gizmo.render(camera, controls?.target ?? new THREE.Vector3(), width, height);
+        gizmo?.render(camera, controls?.target ?? new THREE.Vector3(), width, height);
         requestAnimationFrame(animate);
       };
       animate();
@@ -661,7 +671,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
       sx={{
         width: "100%",
         height: "100%",
-        bgcolor: "action.hover",
+        bgcolor: background,
         borderRadius: 1,
         overflow: "hidden",
         position: "relative",
@@ -675,7 +685,7 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(function Mod
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            bgcolor: "action.hover",
+            bgcolor: background,
           }}
         >
           <Stack alignItems="center" spacing={1.5}>

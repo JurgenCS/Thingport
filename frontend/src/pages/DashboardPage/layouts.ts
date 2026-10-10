@@ -40,9 +40,13 @@ export const PUZZLE_COLUMNS = 6;
 /**
  * A fixed jumble rather than a fresh shuffle, so the dashboard doesn't rearrange on every visit.
  * Listed in placement order: with dense packing the small counts drop into the gaps beside the
- * big panels, and with every box shown the pieces fill five rows of six exactly.
+ * big panels. The optional extras fill two rows of six exactly, and the default boxes five more.
  */
 const PUZZLE_PIECES: { id: DashboardWidgetId; columns: number; rows: number }[] = [
+  // The optional extras lead: two full rows when shown, and the rest packs below as if they weren't.
+  { id: "featuredModel", columns: 3, rows: 2 },
+  { id: "clock", columns: 3, rows: 1 },
+  { id: "weather", columns: 3, rows: 1 },
   { id: "topViewed", columns: 3, rows: 2 },
   { id: "collectionCount", columns: 2, rows: 1 },
   { id: "modelCount", columns: 1, rows: 1 },

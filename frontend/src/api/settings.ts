@@ -24,7 +24,12 @@ export type DashboardWidgetId =
   | "topPrinted"
   | "recentlyAdded"
   | "topAuthors"
-  | "topProviders";
+  | "topProviders"
+  | "clock"
+  | "weather"
+  | "featuredModel";
+/** Where the dashboard's weather is for; "device" came from the browser, "manual" from a search. */
+export type WeatherLocation = { lat: number; lon: number; name: string | null; source: "device" | "manual" };
 // Kept in sync by hand with the backend's DASHBOARD_LAYOUTS.
 export type DashboardLayout = "left" | "top" | "right" | "bottom" | "topTwo" | "puzzle";
 /** Only the widgets the user has switched; the rest follow their default. */
@@ -395,6 +400,24 @@ export const settingsApi = {
     });
     if (res.status === 401) throw new UnauthorizedError();
     if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update the dashboard widget settings"));
+    return res.json();
+  },
+
+  getWeatherLocation: async (): Promise<{ location: WeatherLocation | null }> => {
+    const res = await fetch(`${apiBase()}/settings/weather-location`, { headers: authHeaders() });
+    assertOk(res, "Failed to load the weather location");
+    return res.json();
+  },
+
+  /** Null forgets the location. */
+  updateWeatherLocation: async (location: WeatherLocation | null): Promise<{ location: WeatherLocation | null }> => {
+    const res = await fetch(`${apiBase()}/settings/weather-location`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ location }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update the weather location"));
     return res.json();
   },
 

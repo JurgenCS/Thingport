@@ -349,11 +349,54 @@
         "title": "Naujausiai pridėti",
         "empty": "Dar nieko nepridėta — įkelti ir importuoti modeliai atsiras čia."
       },
+      "clock": {
+        "label": "Laikrodis",
+        "greeting": {
+          "night": "Naktinės pelėdos režimas",
+          "morning": "Labas rytas",
+          "afternoon": "Laba diena",
+          "evening": "Labas vakaras"
+        }
+      },
+      "weather": {
+        "label": "Orai",
+        "setLocation": "Pasirinkite, kurios vietos orus rodyti.",
+        "detect": "Nustatyti vietą",
+        "detecting": "Klausiama naršyklės…",
+        "detectUnavailable": "Naršyklės dalijasi vieta tik per HTTPS arba localhost. Ieškokite vietos.",
+        "detectBlocked": "Šiai svetainei vieta užblokuota. Leiskite ją naršyklės svetainės nustatymuose arba ieškokite vietos.",
+        "detectFailed": "Nepavyko nustatyti vietos. Bandykite dar kartą arba ieškokite vietos.",
+        "searchLabel": "Ieškoti vietos",
+        "noPlaces": "Pagal „{{query}}“ vietų nerasta.",
+        "searchFailed": "Vietos paieška nepavyko. Patikrinkite ryšį ir bandykite dar kartą.",
+        "cancel": "Atšaukti",
+        "forget": "Pamiršti vietą",
+        "change": "Keisti vietą",
+        "yourArea": "Jūsų vietovė",
+        "loadError": "Nepavyko įkelti orų.",
+        "highLow": "Aukšč. {{high}}° žem. {{low}}°",
+        "later": "Po {{hours}} val.: {{temperature}}°, {{condition}}",
+        "conditions": {
+          "clear": "Giedra",
+          "partly": "Mažai debesuota",
+          "cloudy": "Debesuota",
+          "fog": "Rūkas",
+          "drizzle": "Dulksna",
+          "rain": "Lietus",
+          "snow": "Sniegas",
+          "storm": "Perkūnija"
+        }
+      },
+      "featuredModel": {
+        "title": "Dienos modelis",
+        "empty": "Kol kas nėra 3D modelių.",
+        "loadError": "Nepavyko įkelti šiandienos modelio.",
+        "hint": "Tempkite, kad pasuktumėte, spustelėkite, kad atidarytumėte"
+      },
       "widgets": {
         "open": "Tvarkyti valdymo skydą",
         "title": "Tvarkyti valdymo skydą",
         "subtitle": "Pasirinkite, kuriuos langelius rodo jūsų valdymo skydas.",
-        "close": "Uždaryti",
         "allHidden": "Visi valdymo skydo langeliai paslėpti.",
         "sections": {
           "layout": "Išdėstymas",

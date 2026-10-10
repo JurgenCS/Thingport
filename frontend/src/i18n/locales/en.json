@@ -349,11 +349,54 @@
         "title": "Recently Added",
         "empty": "Nothing added yet — uploaded and imported models will show up here."
       },
+      "clock": {
+        "label": "Clock",
+        "greeting": {
+          "night": "Night owl mode",
+          "morning": "Good morning",
+          "afternoon": "Good afternoon",
+          "evening": "Good evening"
+        }
+      },
+      "weather": {
+        "label": "Weather",
+        "setLocation": "Choose where to show the weather for.",
+        "detect": "Detect location",
+        "detecting": "Asking your browser…",
+        "detectUnavailable": "Browsers share your location only over HTTPS or on localhost. Search for a place instead.",
+        "detectBlocked": "Location is blocked for this site. Allow it in the browser's site settings, or search for a place.",
+        "detectFailed": "Couldn't get your location. Try again, or search for a place.",
+        "searchLabel": "Search for a place",
+        "noPlaces": "No places found for “{{query}}”.",
+        "searchFailed": "Place search failed. Check your connection and try again.",
+        "cancel": "Cancel",
+        "forget": "Forget location",
+        "change": "Change location",
+        "yourArea": "Your area",
+        "loadError": "Couldn't load the weather.",
+        "highLow": "H {{high}}° L {{low}}°",
+        "later": "In {{hours}} h: {{temperature}}°, {{condition}}",
+        "conditions": {
+          "clear": "Clear",
+          "partly": "Partly cloudy",
+          "cloudy": "Cloudy",
+          "fog": "Fog",
+          "drizzle": "Drizzle",
+          "rain": "Rain",
+          "snow": "Snow",
+          "storm": "Thunderstorm"
+        }
+      },
+      "featuredModel": {
+        "title": "Featured model",
+        "empty": "No 3D models to feature yet.",
+        "loadError": "Couldn't load today's model.",
+        "hint": "Drag to spin, click to open"
+      },
       "widgets": {
         "open": "Customize dashboard",
         "title": "Customize dashboard",
         "subtitle": "Choose which boxes your dashboard shows.",
-        "close": "Close",
         "allHidden": "Every dashboard box is hidden.",
         "sections": {
           "layout": "Layout",

@@ -1,21 +1,25 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app";
+import { prisma } from "../src/db";
 
 const app = createApp();
 const stamp = Date.now();
 let token: string;
+let userId: string;
 
 const auth = () => ({ Authorization: `Bearer ${token}` });
 const get = async () => (await request(app).get("/api/settings/dashboard-widgets").set(auth())).body.widgets;
 const patch = (widgets: unknown) => request(app).patch("/api/settings/dashboard-widgets").set(auth()).send({ widgets });
 
 beforeAll(async () => {
-  token = (
+  const registered = (
     await request(app)
       .post("/api/register")
       .send({ displayName: "Widgets", email: `widgets-${stamp}@example.com`, password: "password123" })
-  ).body.token;
+  ).body;
+  token = registered.token;
+  userId = registered.user.id;
 });
 
 describe("dashboard widget preferences", () => {
@@ -38,7 +42,7 @@ describe("dashboard widget preferences", () => {
   });
 
   it("rejects an unknown widget or a non-boolean", async () => {
-    expect((await patch({ weather: false })).status).toBe(400);
+    expect((await patch({ horoscope: false })).status).toBe(400);
     expect((await patch({ topViewed: "no" })).status).toBe(400);
   });
 
@@ -65,5 +69,75 @@ describe("dashboard layout preference", () => {
 
   it("needs a signed-in user", async () => {
     expect((await request(app).get("/api/settings/dashboard-layout")).status).toBe(401);
+  });
+});
+
+describe("weather location preference", () => {
+  const getLocation = async () => (await request(app).get("/api/settings/weather-location").set(auth())).body.location;
+  const setLocation = (location: unknown) =>
+    request(app).patch("/api/settings/weather-location").set(auth()).send({ location });
+
+  it("starts unset, keeps a chosen place, and forgets it", async () => {
+    expect(await getLocation()).toBeNull();
+    const vilnius = { lat: 54.69, lon: 25.28, name: "Vilnius", source: "manual" };
+    expect((await setLocation(vilnius)).body.location).toEqual(vilnius);
+    expect(await getLocation()).toEqual(vilnius);
+    expect((await setLocation(null)).status).toBe(200);
+    expect(await getLocation()).toBeNull();
+  });
+
+  it("rejects coordinates off the globe", async () => {
+    expect((await setLocation({ lat: 91, lon: 0, name: null, source: "device" })).status).toBe(400);
+    expect((await setLocation({ lat: 0, lon: 0, name: null, source: "elsewhere" })).status).toBe(400);
+  });
+});
+
+describe("featured model", () => {
+  const featured = async (date: string) =>
+    (await request(app).get(`/api/dashboard/featured?date=${date}`).set(auth())).body.print;
+  const createdPrints: string[] = [];
+
+  async function model(filename: string) {
+    const name = `Featured ${createdPrints.length} ${stamp}`;
+    const row = await prisma.print.create({
+      data: {
+        userId,
+        name,
+        nameNormalized: name.toLowerCase(),
+        plates: {
+          create: {
+            position: 0,
+            filename,
+            mime: "model/stl",
+            storagePath: `featured-${stamp}-${createdPrints.length}`,
+          },
+        },
+      },
+    });
+    createdPrints.push(row.id);
+    return row;
+  }
+
+  afterAll(async () => {
+    await prisma.print.deleteMany({ where: { id: { in: createdPrints } } });
+  });
+
+  it("has nothing to feature without a 3D model", async () => {
+    await model("notes.pdf");
+    expect(await featured("2026-10-10")).toBeNull();
+  });
+
+  it("features a 3D model, the same one all day", async () => {
+    const models = [await model("cube.stl"), await model("plate.3mf"), await model("part.step")];
+    const today = await featured("2026-10-10");
+    expect(models.map((m) => m.id)).toContain(today.id);
+    expect((await featured("2026-10-10")).id).toBe(today.id);
+    // Over a few days the pick moves between models.
+    const days = await Promise.all(["11", "12", "13", "14", "15", "16"].map((d) => featured(`2026-10-${d}`)));
+    expect(new Set(days.map((print) => print.id)).size).toBeGreaterThan(1);
+  });
+
+  it("rejects a malformed date", async () => {
+    expect((await request(app).get("/api/dashboard/featured?date=yesterday").set(auth())).status).toBe(400);
   });
 });

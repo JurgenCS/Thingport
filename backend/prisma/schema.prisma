@@ -53,6 +53,8 @@ model User {
   dashboardWidgets         Json?
   // How the dashboard arranges its boxes, one of DASHBOARD_LAYOUTS; null means "left".
   dashboardLayout          String?
+  // Where the dashboard's weather is for: { lat, lon, name, source }. Null until the user sets one.
+  weatherLocation          Json?
   authorPreviewEnabled     Boolean          @default(true)
   // Filled from the first linked Author with this data; later links never overwrite it.
   bio                      String?

@@ -57,6 +57,7 @@ import { CONSUME_DIR } from "../config";
 import { THEME_SELECTIONS, getUserTheme, setUserTheme } from "../services/themePreferenceService";
 import { getUserAuthorPreviewEnabled, setUserAuthorPreviewEnabled } from "../services/authorPreviewPreferenceService";
 import { checkForUpdates } from "../services/versionService";
+import { getWeatherLocation, setWeatherLocation, weatherLocationSchema } from "../services/weatherLocationService";
 import { dropPreviewsAffectedBySimplification } from "../services/modelPreviewCache";
 import { testAiCategorizationProvider } from "../services/aiCategorizationService";
 
@@ -467,6 +468,23 @@ router.patch(
   asyncHandler(async (req, res) => {
     const body = parseBody(dashboardLayoutSchema, req.body);
     res.json({ layout: await setDashboardLayout(req.userId!, body.layout) });
+  }),
+);
+
+router.get(
+  "/settings/weather-location",
+  asyncHandler(async (req, res) => {
+    res.json({ location: await getWeatherLocation(req.userId!) });
+  }),
+);
+
+// Null forgets the location.
+const weatherLocationBodySchema = z.object({ location: weatherLocationSchema.nullable() });
+router.patch(
+  "/settings/weather-location",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(weatherLocationBodySchema, req.body);
+    res.json({ location: await setWeatherLocation(req.userId!, body.location) });
   }),
 );
 

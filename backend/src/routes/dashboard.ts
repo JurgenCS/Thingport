@@ -1,8 +1,12 @@
 import { Router } from "express";
+import { z } from "zod";
 import { requireAuth } from "../auth";
 import { asyncHandler } from "../utils/asyncHandler";
+import { parseBody } from "../utils/validate";
+import { printOutById } from "../services/printLoader";
 import {
   getDashboardSummary,
+  getFeaturedModelId,
   getTopAuthorsList,
   getTopPrintedList,
   getTopViewedList,
@@ -76,6 +80,21 @@ router.get(
   "/dashboard/top-authors",
   asyncHandler(async (req, res) => {
     res.json((await getTopAuthorsList(req.userId!)).map(authorOut));
+  }),
+);
+
+const featuredQuerySchema = z.object({
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+});
+router.get(
+  "/dashboard/featured",
+  asyncHandler(async (req, res) => {
+    const { date } = parseBody(featuredQuerySchema, req.query);
+    const printId = await getFeaturedModelId(req.userId!, date ?? new Date().toISOString().slice(0, 10));
+    res.json({ print: printId ? await printOutById(req.userId!, printId) : null });
   }),
 );
 

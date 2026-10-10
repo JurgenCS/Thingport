@@ -88,7 +88,7 @@ export default function DashboardPage({ onUnauthorized }: Props) {
     const sideways = definition.counts === "left" || definition.counts === "right";
     const countsFirst = definition.counts === "left" || definition.counts === "top";
     const renderWidget = (widget: DashboardWidget) => (
-      <React.Fragment key={widget.id}>{widget.render({ summary, t, navigate })}</React.Fragment>
+      <React.Fragment key={widget.id}>{widget.render({ summary, t, navigate, onUnauthorized })}</React.Fragment>
     );
 
     const countsBlock = counts.length ? (
@@ -153,7 +153,7 @@ export default function DashboardPage({ onUnauthorized }: Props) {
                 "& > *": { flex: 1 },
               }}
             >
-              {item.render({ summary, t, navigate })}
+              {item.render({ summary, t, navigate, onUnauthorized })}
             </Box>
           ))}
         </Box>

@@ -11,6 +11,9 @@ export const DASHBOARD_WIDGETS = [
   "recentlyAdded",
   "topAuthors",
   "topProviders",
+  "clock",
+  "weather",
+  "featuredModel",
 ] as const;
 export type DashboardWidgetId = (typeof DASHBOARD_WIDGETS)[number];
 export type DashboardWidgets = Partial<Record<DashboardWidgetId, boolean>>;

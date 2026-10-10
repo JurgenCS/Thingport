@@ -14,8 +14,16 @@ import ModelListCard from "./ModelListCard";
 import AuthorListCard from "./AuthorListCard";
 import ProviderListCard from "./ProviderListCard";
 import RecentlyAddedCard from "./RecentlyAddedCard";
+import ClockCard from "./ClockCard";
+import WeatherCard from "./WeatherCard";
+import FeaturedModelCard from "./FeaturedModelCard";
 
-type WidgetContext = { summary: DashboardSummary; t: TFunction; navigate: NavigateFunction };
+type WidgetContext = {
+  summary: DashboardSummary;
+  t: TFunction;
+  navigate: NavigateFunction;
+  onUnauthorized?: () => void;
+};
 
 export type DashboardWidget = {
   id: DashboardWidgetId;
@@ -86,6 +94,13 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     ),
   },
   {
+    id: "featuredModel",
+    labelKey: "dashboard.featuredModel.title",
+    column: 1,
+    defaultEnabled: false,
+    render: ({ onUnauthorized }) => <FeaturedModelCard onUnauthorized={onUnauthorized} />,
+  },
+  {
     id: "topViewed",
     labelKey: "dashboard.topViewed.title",
     column: 1,
@@ -127,6 +142,22 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     column: 1,
     defaultEnabled: true,
     render: ({ summary }) => <RecentlyAddedCard models={summary.recently_added} />,
+  },
+  // The clock, weather and featured model are optional extras, off until the user switches them on.
+  // Clock and weather sit together at the top of the right column, as panels rather than count boxes.
+  {
+    id: "clock",
+    labelKey: "dashboard.clock.label",
+    column: 2,
+    defaultEnabled: false,
+    render: () => <ClockCard />,
+  },
+  {
+    id: "weather",
+    labelKey: "dashboard.weather.label",
+    column: 2,
+    defaultEnabled: false,
+    render: () => <WeatherCard />,
   },
   {
     id: "topAuthors",

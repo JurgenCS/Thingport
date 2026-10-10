@@ -1,0 +1,91 @@
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import Paper from "@mui/material/Paper";
+import Typography from "@mui/material/Typography";
+
+// A status-bar look: monospace, the time as the anchor, the date small and spaced out.
+export const MONO_FONT = '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+
+function greetingKey(hour: number): string {
+  if (hour < 5) return "night";
+  if (hour < 12) return "morning";
+  if (hour < 18) return "afternoon";
+  return "evening";
+}
+
+/** Re-renders on each new minute, lined up with the wall clock rather than drifting from mount time. */
+function useMinute(): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    let timer: number;
+    const schedule = () => {
+      const next = new Date();
+      timer = window.setTimeout(
+        () => {
+          setNow(new Date());
+          schedule();
+        },
+        60_000 - (next.getSeconds() * 1000 + next.getMilliseconds()),
+      );
+    };
+    schedule();
+    return () => window.clearTimeout(timer);
+  }, []);
+  return now;
+}
+
+export default function ClockCard() {
+  const { t, i18n } = useTranslation("app");
+  const now = useMinute();
+  const time = new Intl.DateTimeFormat(i18n.language, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(
+    now,
+  );
+  const weekday = new Intl.DateTimeFormat(i18n.language, { weekday: "short" }).format(now);
+  const day = new Intl.DateTimeFormat(i18n.language, { month: "short", day: "numeric" }).format(now);
+
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 3,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        gap: 0.75,
+        minHeight: 140,
+        fontFamily: MONO_FONT,
+        borderColor: (theme) => (theme.palette.mode === "dark" ? "transparent" : "divider"),
+      }}
+    >
+      <Typography
+        component="time"
+        dateTime={now.toISOString()}
+        sx={{
+          fontFamily: "inherit",
+          fontSize: "2.75rem",
+          fontWeight: 600,
+          lineHeight: 1,
+          letterSpacing: "-0.02em",
+          fontVariantNumeric: "tabular-nums",
+          color: (theme) => theme.thingport.headingText,
+        }}
+      >
+        {time}
+      </Typography>
+      <Typography
+        sx={{
+          fontFamily: "inherit",
+          fontSize: "0.8rem",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "text.secondary",
+        }}
+      >
+        {`${weekday} · ${day}`}
+      </Typography>
+      <Typography sx={{ fontFamily: "inherit", fontSize: "0.75rem", color: "text.disabled" }}>
+        {t(`dashboard.clock.greeting.${greetingKey(now.getHours())}`)}
+      </Typography>
+    </Paper>
+  );
+}

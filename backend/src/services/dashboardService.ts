@@ -1,5 +1,8 @@
 import fs from "node:fs";
+import path from "node:path";
+import { createHash } from "node:crypto";
 import { prisma } from "../db";
+import { RENDERABLE_MODEL_EXTS } from "../config";
 import { plateThumbExists, plateThumbPath } from "./printService";
 
 const TOP_MODELS_PREVIEW = 3;
@@ -196,4 +199,27 @@ export function getTopPrintedList(userId: string): Promise<DashboardModel[]> {
 
 export function getTopAuthorsList(userId: string): Promise<DashboardAuthor[]> {
   return fetchTopAuthors(userId, TOP_AUTHORS_LIST_MAX);
+}
+
+/**
+ * One of the user's models whose first file can be shown in 3D, the same one all day. The day is the
+ * caller's own date, so the pick changes at the user's midnight rather than the server's.
+ */
+export async function getFeaturedModelId(userId: string, day: string): Promise<string | null> {
+  const plates = await prisma.plate.findMany({
+    where: { print: { userId } },
+    select: { printId: true, filename: true },
+    orderBy: [{ printId: "asc" }, { position: "asc" }],
+  });
+  const candidates: string[] = [];
+  const seen = new Set<string>();
+  for (const plate of plates) {
+    // The first plate is the one a preview shows.
+    if (seen.has(plate.printId)) continue;
+    seen.add(plate.printId);
+    if (RENDERABLE_MODEL_EXTS.has(path.extname(plate.filename).toLowerCase())) candidates.push(plate.printId);
+  }
+  if (!candidates.length) return null;
+  const seed = createHash("sha256").update(`${userId}:${day}`).digest().readUInt32BE(0);
+  return candidates[seed % candidates.length];
 }
