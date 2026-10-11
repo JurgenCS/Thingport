@@ -28,6 +28,8 @@ services:
       # Unset SMTP skips email verification; unset FlareSolverr keeps the run offline.
       - SMTP_HOST=
       - FLARESOLVERR_URL=
+      - COLLECTION_SYNC_ENABLED=false
+      - SYSTEM_NOTIFICATIONS_URL=
       # Low, so the consume folder's size cap is testable with a small file.
       - IMPORT_MAX_MB=1
       # The host user, so the backend can empty the bind-mounted consume folder (set by run.sh).
@@ -51,7 +53,7 @@ services:
       context: ../frontend
       dockerfile: Dockerfile
     ports:
-      - "${REGRESSION_PORT:-8090}:80"
+      - "127.0.0.1:${REGRESSION_PORT:-8090}:80"
     depends_on:
       backend:
         condition: service_healthy

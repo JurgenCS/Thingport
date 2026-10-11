@@ -71,7 +71,7 @@ test("each file becomes a model and each directory a folder, leaving the folder 
   // The bell only polls every 45s, so reload to pick it up.
   await page.goto("/");
   await page.getByRole("button", { name: "Notifications" }).click();
-  await page.getByRole("menuitem", { name: /Imported 4 models from the consume folder/ }).click();
+  await page.getByRole("link", { name: /Imported 4 models from the consume folder/ }).click();
   await expect(page).toHaveURL(/\/models$/);
 });
 

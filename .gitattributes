@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Shell entrypoints must also execute in Linux containers built from Windows checkouts.
+*.sh text eol=lf

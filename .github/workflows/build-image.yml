@@ -62,6 +62,10 @@ jobs:
         working-directory: ${{ inputs.project_dir }}
         run: npm run --if-present typecheck
 
+      - name: Unit tests (frontend; the backend suite runs in backend-image.yml)
+        working-directory: ${{ inputs.project_dir }}
+        run: npm run --if-present test:run
+
       - name: Set up QEMU (for the arm64 leg of the multi-arch build below)
         uses: docker/setup-qemu-action@v3
 

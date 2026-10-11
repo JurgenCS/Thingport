@@ -13,6 +13,11 @@ Getting the project running locally is covered in [docs/DEVELOPMENT.md](docs/DEV
 
 ## Workflow
 
+For this fork, keep `main` as the upstream mirror and branch `feat/*` or `fix/*` from `develop`;
+target `develop` for product PRs. The steps below describe contributions to upstream.
+`git config --local push.default nothing` prevents an implicit `git push`; it does not replace
+GitHub branch protection or prevent explicitly requested pushes. Remote protection must be configured separately.
+
 1. **Fork** the repository and clone your fork.
 2. **Branch** from `main`. Name it after what it does: `fix/firefox-background-importscripts`,
    `feat/printables-collections`.
@@ -58,10 +63,11 @@ path-filtered, so only the parts you touched run:
 | `bridge/**`    | `go test ./...` and a build for Windows, Linux and macOS                                        |
 
 The [regression pack](docs/DEVELOPMENT.md#regression-pack), which runs end-to-end browser scenarios
-against the full stack, isn't run on pull requests. It runs weekly on `main`.
+against the full stack, runs on relevant PRs/pushes to `develop` and weekly on the default branch.
 
 Nothing is published from a pull request -- images are built to prove they build, but only pushes
-to `main` publish anything.
+to `main` or matching version tags publish images. Pushes to `develop` validate without publishing
+images or extension releases. Extension signing and release jobs remain restricted to pushes to `main`.
 
 If you're a brand-new GitHub account, your first PR's workflows wait for a maintainer to approve
 them before running. That's a GitHub setting, not something wrong with your PR.

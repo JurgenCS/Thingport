@@ -6,12 +6,12 @@ name: Extension release
 # release, which Bridge's download links rely on.
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - "extension/**"
       - ".github/workflows/extension-release.yml"
   pull_request:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - "extension/**"
       - ".github/workflows/extension-release.yml"

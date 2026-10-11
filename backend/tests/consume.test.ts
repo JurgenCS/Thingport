@@ -42,11 +42,14 @@ async function printsNamed(name: string) {
 }
 
 beforeAll(async () => {
+  const email = `consume-${Date.now()}@example.com`;
   const res = await request(app)
     .post("/api/register")
-    .send({ displayName: "Consumer", email: `consume-${Date.now()}@example.com`, password: "password123" });
+    .send({ displayName: "Consumer", email, password: "password123" });
   userId = res.body.user.id;
-  token = res.body.token;
+  // On a fresh test database the first registration is ADMIN; this fixture needs a member.
+  await prisma.user.update({ where: { id: userId }, data: { role: "MEMBER" } });
+  token = (await request(app).post("/api/login").send({ email, password: "password123" })).body.token;
   await setConsumeSettings({ userId });
 });
 

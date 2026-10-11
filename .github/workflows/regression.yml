@@ -1,8 +1,22 @@
 name: Regression pack
 
-# End-to-end scenarios against the whole stack built from main, in a browser. The database is
+# End-to-end scenarios against the checked-out stack, in a browser. The database is
 # thrown away after every run. Cron is UTC: 00:00 on Saturday.
 on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "regression/**"
+      - ".github/workflows/regression.yml"
+  push:
+    branches: [develop]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "regression/**"
+      - ".github/workflows/regression.yml"
   schedule:
     - cron: "0 0 * * 6"
   workflow_dispatch:
@@ -11,7 +25,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: regression
+  group: regression-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
