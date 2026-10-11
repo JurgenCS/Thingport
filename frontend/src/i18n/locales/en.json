@@ -726,6 +726,24 @@
         "confirmWarning": "This repoints every database call this running instance makes at a different database. If the new credentials are wrong or unreachable, the switch is rejected and nothing changes.",
         "confirmBody": "Switch to database \"{{database}}\" as user \"{{user}}\"? This does not persist across a restart — update DATABASE_URL if you want it to stick."
       },
+      "flaresolverr": {
+        "tabLabel": "FlareSolverr",
+        "helpText": "FlareSolverr gets imports past Cloudflare challenges on MakerWorld and Thingiverse. Enter its URL (with or without /v1), or leave it blank to turn it off. Saving checks that FlareSolverr answers first.",
+        "urlLabel": "URL",
+        "urlPlaceholder": "http://flaresolverr:8191",
+        "statusConfigured": "FlareSolverr is configured.",
+        "statusNotConfigured": "FlareSolverr is not configured — imports blocked by Cloudflare will fail.",
+        "save": "Save",
+        "saving": "Saving…",
+        "saved": "Saved.",
+        "cleared": "Saved. FlareSolverr is off.",
+        "test": "Test",
+        "testing": "Testing…",
+        "testSuccess": "FlareSolverr {{version}} answered in {{latency}} ms.",
+        "testFailed": "FlareSolverr didn't answer.",
+        "loadFailed": "Unable to load FlareSolverr settings.",
+        "failed": "Failed to save FlareSolverr settings."
+      },
       "users": {
         "heading": "Users",
         "columnEmail": "Email",

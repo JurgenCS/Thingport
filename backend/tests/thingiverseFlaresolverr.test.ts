@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { prisma } from "../src/db";
 
 const ACCESS_TOKEN = "test-access-token";
 const FLARESOLVERR_URL = "http://fake-flaresolverr.test/v1";
@@ -32,7 +33,8 @@ describe("fetchThingiverseApiJson FlareSolverr fallback", () => {
   });
 
   it("solves a Cloudflare challenge via FlareSolverr, then reuses the proxy for later calls to the same host", async () => {
-    // config.ts reads this on first import, hence the dynamic import below.
+    // config.ts reads this on first import, hence the dynamic import below. A saved setting would override it.
+    await prisma.setting.deleteMany({ where: { key: "flaresolverr_url" } });
     process.env.FLARESOLVERR_URL = FLARESOLVERR_URL;
     vi.resetModules();
     const { resolveThingiverseThing } = await import("../src/services/thingiverseApi");

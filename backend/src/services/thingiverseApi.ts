@@ -4,7 +4,6 @@ import { cleanThingiverseMarkdown } from "./descriptionMarkdown";
 import {
   extractJsonFromBrowserBody,
   fetchViaFlaresolverr,
-  isFlaresolverrEnabled,
   looksLikeCloudflareBlock,
   shouldProxyHost,
 } from "./flaresolverr";
@@ -98,7 +97,7 @@ async function fetchThingiverseApi(
 
   let res: Response;
   let viaBrowser = false;
-  if (isFlaresolverrEnabled() && shouldProxyHost(THINGIVERSE_API_HOSTNAME)) {
+  if (shouldProxyHost(THINGIVERSE_API_HOSTNAME)) {
     const solved = await fetchViaFlaresolverr(url);
     if (solved) {
       viaBrowser = true;
@@ -108,11 +107,7 @@ async function fetchThingiverseApi(
     }
   } else {
     res = await rawApiFetch(url);
-    if (
-      (res.status === 429 || res.status === 403) &&
-      isFlaresolverrEnabled() &&
-      looksLikeCloudflareBlock(res.headers)
-    ) {
+    if ((res.status === 429 || res.status === 403) && looksLikeCloudflareBlock(res.headers)) {
       const solved = await fetchViaFlaresolverr(url);
       if (solved) {
         viaBrowser = true;

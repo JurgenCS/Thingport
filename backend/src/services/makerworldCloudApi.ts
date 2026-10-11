@@ -134,7 +134,7 @@ export async function verifyMakerworldCookie(rawCookieOrToken: string): Promise<
       signal: controller.signal,
     });
     if (res.status === 403 && looksLikeCloudflareBlock(res.headers)) {
-      if (!isFlaresolverrEnabled()) return { result: "unverifiable", reason: "cloudflare_no_flaresolverr" };
+      if (!(await isFlaresolverrEnabled())) return { result: "unverifiable", reason: "cloudflare_no_flaresolverr" };
       // Through FlareSolverr this answers 200 even when logged out; only a real session has a `uid`.
       const solved = await fetchViaFlaresolverr(SELF_PREFERENCE_URL, `token=${bearerToken}`);
       if (!solved) return { result: "unverifiable", reason: "flaresolverr_failed" };
@@ -188,7 +188,7 @@ async function fetchAuthorProfileJson(uid: string, paceMs?: number): Promise<unk
   const timeout = setTimeout(() => controller.abort(), CLOUD_API_TIMEOUT_MS);
   try {
     const res = await fetch(url, { headers, redirect: "follow", signal: controller.signal });
-    if (res.status === 403 && isFlaresolverrEnabled() && looksLikeCloudflareBlock(res.headers)) {
+    if (res.status === 403 && looksLikeCloudflareBlock(res.headers)) {
       const solved = await fetchViaFlaresolverr(url, null);
       if (!solved) return null;
       return extractJsonFromBrowserBody(solved.body);

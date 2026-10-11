@@ -728,6 +728,24 @@
         "confirmWarning": "Tai nukreipia visus šio veikiančio serverio duomenų bazės užklausas į kitą duomenų bazę. Jei nauji duomenys neteisingi arba nepasiekiami, pakeitimas atmetamas ir niekas nesikeičia.",
         "confirmBody": "Perjungti į duomenų bazę „{{database}}“ naudotoju „{{user}}“? Tai neišlieka po perkrovimo — jei norite, kad pakeitimas išliktų, atnaujinkite DATABASE_URL."
       },
+      "flaresolverr": {
+        "tabLabel": "FlareSolverr",
+        "helpText": "FlareSolverr padeda importuojant apeiti Cloudflare patikras MakerWorld ir Thingiverse svetainėse. Įveskite jo URL (su /v1 arba be jo) arba palikite tuščią, kad išjungtumėte. Prieš išsaugant patikrinama, ar FlareSolverr atsako.",
+        "urlLabel": "URL",
+        "urlPlaceholder": "http://flaresolverr:8191",
+        "statusConfigured": "FlareSolverr sukonfigūruotas.",
+        "statusNotConfigured": "FlareSolverr nesukonfigūruotas — Cloudflare užblokuoti importai nepavyks.",
+        "save": "Išsaugoti",
+        "saving": "Saugoma…",
+        "saved": "Išsaugota.",
+        "cleared": "Išsaugota. FlareSolverr išjungtas.",
+        "test": "Tikrinti",
+        "testing": "Tikrinama…",
+        "testSuccess": "FlareSolverr {{version}} atsakė per {{latency}} ms.",
+        "testFailed": "FlareSolverr neatsakė.",
+        "loadFailed": "Nepavyko įkelti FlareSolverr nustatymų.",
+        "failed": "Nepavyko išsaugoti FlareSolverr nustatymų."
+      },
       "users": {
         "heading": "Naudotojai",
         "columnEmail": "El. paštas",

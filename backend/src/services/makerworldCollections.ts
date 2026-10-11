@@ -81,7 +81,8 @@ async function fetchCollectionJson(
       redirect: "follow",
       signal: controller.signal,
     });
-    if (res.status === 403 && isFlaresolverrEnabled() && looksLikeCloudflareBlock(res.headers)) {
+    // Checked separately, unlike the other callers: without FlareSolverr a 403 falls through to MakerworldAuthError.
+    if (res.status === 403 && looksLikeCloudflareBlock(res.headers) && (await isFlaresolverrEnabled())) {
       const solved = await fetchViaFlaresolverr(url, bearerToken ? `token=${bearerToken}` : null);
       if (!solved) return fail("blocked by Cloudflare");
       const data = extractJsonFromBrowserBody(solved.body);

@@ -22,7 +22,7 @@ import {
 import { validateRemoteUrl } from "../utils/urlUtils";
 import { readCapped } from "../utils/readCapped";
 import { maybeSleep, sleep } from "../utils/concurrency";
-import { fetchViaFlaresolverr, isFlaresolverrEnabled, looksLikeCloudflareBlock, shouldProxyHost } from "./flaresolverr";
+import { fetchViaFlaresolverr, looksLikeCloudflareBlock, shouldProxyHost } from "./flaresolverr";
 import {
   emptyImportedPageMetadata,
   extractNextDataJson,
@@ -136,11 +136,11 @@ async function fetchWithGuard(url: string, headers: Record<string, string>): Pro
     } catch {}
 
     let res: Response;
-    if (isFlaresolverrEnabled() && shouldProxyHost(hostname)) {
+    if (shouldProxyHost(hostname)) {
       res = (await proxiedResponse(url, headers.Cookie)) || (await rawFetch(url, headers));
     } else {
       res = await rawFetch(url, headers);
-      if (res.status === 403 && isFlaresolverrEnabled() && looksLikeCloudflareBlock(res.headers)) {
+      if (res.status === 403 && looksLikeCloudflareBlock(res.headers)) {
         const proxied = await proxiedResponse(url, headers.Cookie);
         if (proxied) res = proxied;
       }

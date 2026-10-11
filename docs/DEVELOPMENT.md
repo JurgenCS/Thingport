@@ -95,13 +95,15 @@ Open <http://localhost:5173>. **The first account you register becomes the admin
 ## Optional: FlareSolverr
 
 Thingiverse sits behind Cloudflare, and some imports need FlareSolverr to get through. It's
-optional -- leave `FLARESOLVERR_URL` blank to disable it and those imports will simply fail.
+optional -- without it those imports will simply fail.
 
 ```bash
 docker run -d --name thingport-flaresolverr -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest
 ```
 
-Then set `FLARESOLVERR_URL=http://localhost:8191/v1` in `backend/.env`.
+Then set its URL (`http://localhost:8191`, with or without `/v1`) in **Administration → Connections →
+FlareSolverr**. `FLARESOLVERR_URL` in `backend/.env` is copied into that setting on the first startup; after that the
+saved value wins and the env var is ignored.
 
 ## Running the tests
 

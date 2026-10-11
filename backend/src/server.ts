@@ -4,6 +4,7 @@ import { prisma } from "./db"; // also ensures storage directories exist before 
 import { startConsumeWatcher } from "./services/consumeService";
 import { startCollectionSyncScheduler } from "./services/collectionSyncRunner";
 import { SYNC_JOB_INTERRUPTED } from "./services/importJobRunner";
+import { seedFlaresolverrUrl } from "./services/settingsService";
 
 const app = createApp();
 
@@ -19,6 +20,8 @@ const app = createApp();
     data: { status: "ERROR", errorMessage: "Interrupted by server restart" },
   });
 })().catch((err) => console.error("Failed to recover stale import jobs on startup:", err));
+
+seedFlaresolverrUrl().catch((err) => console.error("Failed to seed the FlareSolverr URL setting:", err));
 
 app.listen(API_PORT, () => {
   console.log(`Thingport API listening on port ${API_PORT}`);

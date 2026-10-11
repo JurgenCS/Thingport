@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../db";
+import { FLARESOLVERR_URL } from "../config";
 
 async function getBoolSetting(key: string, fallback: boolean): Promise<boolean> {
   const row = await prisma.setting.findUnique({ where: { key } });
@@ -155,6 +156,44 @@ export async function setSmtpSettings(patch: Partial<SmtpSettings>): Promise<Smt
     update: { value: next as unknown as Prisma.InputJsonValue },
   });
   return next;
+}
+
+const FLARESOLVERR_URL_KEY = "flaresolverr_url";
+
+/** FlareSolverr only answers at /v1, so the base URL works too: `http://host:8191` → `http://host:8191/v1`. */
+export function normalizeFlaresolverrUrl(value: string | null | undefined): string | null {
+  const trimmed = (value ?? "").trim().replace(/\/+$/, "");
+  if (!trimmed) return null;
+  return /\/v1$/i.test(trimmed) ? trimmed : `${trimmed}/v1`;
+}
+
+// Until a row exists (seeded at startup or saved by an admin) the env var is the fallback; after that the row wins.
+export async function getFlaresolverrUrl(): Promise<string | null> {
+  const row = await prisma.setting.findUnique({ where: { key: FLARESOLVERR_URL_KEY } });
+  if (row) return typeof row.value === "string" ? normalizeFlaresolverrUrl(row.value) : null;
+  return normalizeFlaresolverrUrl(FLARESOLVERR_URL);
+}
+
+/** Copies the env var into the DB once, at startup, so later env changes don't override what an admin saved. */
+export async function seedFlaresolverrUrl(envValue: string = FLARESOLVERR_URL): Promise<void> {
+  const seed = normalizeFlaresolverrUrl(envValue);
+  if (!seed) return;
+  await prisma.setting.upsert({
+    where: { key: FLARESOLVERR_URL_KEY },
+    create: { key: FLARESOLVERR_URL_KEY, value: seed },
+    update: {},
+  });
+}
+
+// Cleared is stored as "" so the env var doesn't come back on the next read.
+export async function setFlaresolverrUrl(value: string | null): Promise<string | null> {
+  const url = normalizeFlaresolverrUrl(value);
+  await prisma.setting.upsert({
+    where: { key: FLARESOLVERR_URL_KEY },
+    create: { key: FLARESOLVERR_URL_KEY, value: url ?? "" },
+    update: { value: url ?? "" },
+  });
+  return url;
 }
 
 export type AiCategorizationMode = "off" | "suggest" | "auto";

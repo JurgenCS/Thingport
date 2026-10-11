@@ -290,6 +290,37 @@ export const settingsApi = {
     return res.json();
   },
 
+  getFlaresolverr: async (): Promise<{ url: string | null }> => {
+    const res = await fetch(`${apiBase()}/settings/flaresolverr`, { headers: authHeaders() });
+    assertOk(res, "Failed to load FlareSolverr settings");
+    return res.json();
+  },
+
+  // The backend tests a non-empty URL before saving it.
+  updateFlaresolverr: async (url: string | null): Promise<{ url: string | null }> => {
+    const res = await fetch(`${apiBase()}/settings/flaresolverr`, {
+      method: "PATCH",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ url }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update FlareSolverr settings"));
+    return res.json();
+  },
+
+  testFlaresolverr: async (
+    url: string,
+  ): Promise<{ ok: boolean; latency_ms?: number; version?: string | null; error?: string }> => {
+    const res = await fetch(`${apiBase()}/settings/flaresolverr/test`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ url }),
+    });
+    if (res.status === 401) throw new UnauthorizedError();
+    if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to test FlareSolverr"));
+    return res.json();
+  },
+
   // Host/port are fixed at startup; database/user may have been switched by "Test & Save".
   getDatabase: async (): Promise<DatabaseInfo> => {
     const res = await fetch(`${apiBase()}/settings/database`, { headers: authHeaders() });

@@ -21,7 +21,6 @@ import {
 import {
   extractJsonFromBrowserBody,
   fetchViaFlaresolverr,
-  isFlaresolverrEnabled,
   looksLikeCloudflareBlock,
   shouldProxyHost,
 } from "./flaresolverr";
@@ -143,7 +142,8 @@ async function fetchCappedBuffer(
   init?: { method?: string; body?: string },
 ): Promise<{ status: number; headers: Headers; buffer: Buffer; url: string } | null> {
   const isGet = !init?.method || init.method.toUpperCase() === "GET";
-  if (!isGet || !isFlaresolverrEnabled()) {
+  // fetchViaFlaresolverr returns null when it isn't configured, so no separate enabled check (a DB read).
+  if (!isGet) {
     return rawFetchBuffer(url, headers, init);
   }
 

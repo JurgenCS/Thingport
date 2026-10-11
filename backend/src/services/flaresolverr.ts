@@ -1,7 +1,39 @@
-import { FLARESOLVERR_SESSION_TTL_MS, FLARESOLVERR_TIMEOUT_MS, FLARESOLVERR_URL } from "../config";
+import { FLARESOLVERR_SESSION_TTL_MS, FLARESOLVERR_TIMEOUT_MS } from "../config";
+import { getFlaresolverrUrl, normalizeFlaresolverrUrl } from "./settingsService";
 
-export function isFlaresolverrEnabled(): boolean {
-  return Boolean(FLARESOLVERR_URL);
+const TEST_TIMEOUT_MS = 10000;
+
+export async function isFlaresolverrEnabled(): Promise<boolean> {
+  return Boolean(await getFlaresolverrUrl());
+}
+
+/** `sessions.list` is a cheap command that only FlareSolverr's /v1 endpoint answers with status "ok". Takes the
+ * URL with or without /v1. */
+export async function testFlaresolverr(
+  url: string,
+): Promise<{ ok: true; latencyMs: number; version: string | null } | { ok: false; error: string }> {
+  const endpoint = normalizeFlaresolverrUrl(url);
+  if (!endpoint) return { ok: false, error: "Enter the FlareSolverr URL first" };
+  const start = Date.now();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cmd: "sessions.list" }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return { ok: false, error: `FlareSolverr answered HTTP ${res.status}` };
+    const data = (await res.json().catch(() => null)) as { status?: string; version?: string } | null;
+    if (data?.status !== "ok") return { ok: false, error: "That URL didn't answer like FlareSolverr" };
+    return { ok: true, latencyMs: Date.now() - start, version: data.version ?? null };
+  } catch (err) {
+    if (controller.signal.aborted) return { ok: false, error: `No answer within ${TEST_TIMEOUT_MS / 1000}s` };
+    return { ok: false, error: err instanceof Error ? err.message : "Couldn't reach FlareSolverr" };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /** A Cloudflare edge block rather than an application-level 403. */
@@ -47,7 +79,8 @@ export async function fetchViaFlaresolverr(
   url: string,
   cookieHeader?: string | null,
 ): Promise<FlaresolverrResult | null> {
-  if (!FLARESOLVERR_URL) return null;
+  const endpoint = await getFlaresolverrUrl();
+  if (!endpoint) return null;
   let hostname: string;
   try {
     hostname = new URL(url).hostname.toLowerCase();
@@ -67,7 +100,7 @@ export async function fetchViaFlaresolverr(
     };
     if (cookieList.length) body.cookies = cookieList;
 
-    const res = await fetch(FLARESOLVERR_URL, {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

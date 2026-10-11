@@ -11,6 +11,8 @@ import {
   getPreviewMode,
   getSimplifyPreviews,
   getSmtpSettings,
+  getFlaresolverrUrl,
+  setFlaresolverrUrl,
   getThingiverseAccessToken,
   setAllowRegistrations,
   setAuthTokenTtl,
@@ -63,6 +65,7 @@ import { checkForUpdates } from "../services/versionService";
 import { getWeatherLocation, setWeatherLocation, weatherLocationSchema } from "../services/weatherLocationService";
 import { dropPreviewsAffectedBySimplification } from "../services/modelPreviewCache";
 import { testAiCategorizationProvider } from "../services/aiCategorizationService";
+import { testFlaresolverr } from "../services/flaresolverr";
 
 const router = Router();
 router.use(requireAuth);
@@ -289,6 +292,47 @@ router.patch(
 );
 
 router.get(
+  "/settings/flaresolverr",
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    res.json({ url: await getFlaresolverrUrl() });
+  }),
+);
+
+const flaresolverrUrlSchema = z.string().trim().url("Enter a full URL, like http://flaresolverr:8191");
+
+// A URL is only saved once FlareSolverr answers on it; clearing it turns FlareSolverr off without a test.
+const flaresolverrSettingsSchema = z.object({ url: flaresolverrUrlSchema.nullable().or(z.literal("")) }).strict();
+router.patch(
+  "/settings/flaresolverr",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = parseBody(flaresolverrSettingsSchema, req.body);
+    if (body.url) {
+      const result = await testFlaresolverr(body.url);
+      if (!result.ok)
+        throw new HttpError(
+          422,
+          `Could not connect to FlareSolverr: ${result.error}`,
+          "flaresolverr_connection_failed",
+        );
+    }
+    res.json({ url: await setFlaresolverrUrl(body.url || null) });
+  }),
+);
+
+const flaresolverrTestSchema = z.object({ url: flaresolverrUrlSchema }).strict();
+router.post(
+  "/settings/flaresolverr/test",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const body = parseBody(flaresolverrTestSchema, req.body);
+    const result = await testFlaresolverr(body.url);
+    res.json(result.ok ? { ok: true, latency_ms: result.latencyMs, version: result.version } : result);
+  }),
+);
+
+router.get(
   "/settings/database",
   requireAdmin,
   asyncHandler(async (_req, res) => {
@@ -332,9 +376,9 @@ const MAKERWORLD_UNVERIFIABLE_MESSAGES: Record<
   string
 > = {
   cloudflare_no_flaresolverr:
-    "Couldn't check this cookie: MakerWorld's Cloudflare protection blocked the request and FlareSolverr isn't configured. Set FLARESOLVERR_URL and try again.",
+    "Couldn't check this cookie: MakerWorld's Cloudflare protection blocked the request and FlareSolverr isn't configured. Set its URL in Administration → Connections and try again.",
   flaresolverr_failed:
-    "Couldn't check this cookie: MakerWorld's Cloudflare protection blocked the request and FlareSolverr didn't get past it. Make sure FlareSolverr is running and reachable at FLARESOLVERR_URL, then try again.",
+    "Couldn't check this cookie: MakerWorld's Cloudflare protection blocked the request and FlareSolverr didn't get past it. Make sure FlareSolverr is running and reachable at the URL set in Administration → Connections, then try again.",
   network:
     "Couldn't check this cookie: MakerWorld didn't respond. Check this server's internet connection and try again.",
 };
