@@ -36,6 +36,18 @@ function isCaptchaMessage(message: string): boolean {
   return /captcha/i.test(message);
 }
 
+/** One notification for the whole run, instead of one per model. Best-effort: an older backend has
+ *  no summary endpoint. */
+async function sendRunSummary(job: MakerworldJob, stopped: string | null): Promise<void> {
+  await apiCall("POST", "/import/summary", {
+    source_url: job.originalUrl,
+    total: job.total,
+    print_ids: job.printIds ?? [],
+    collection_id: job.collectionId,
+    stopped,
+  }).catch(() => undefined);
+}
+
 /** `urls` are the not-yet-imported designs. tabs.onUpdated drives every step after the first. */
 export async function startJob(
   tabId: number,
@@ -59,6 +71,7 @@ export async function startJob(
     stepDelayMs,
     startAt: 0,
     paused: false,
+    printIds: [],
   });
   await chrome.tabs.update(tabId, { url: urls[0] });
   return null;
@@ -69,6 +82,7 @@ export async function abortJob(tabId: number): Promise<null> {
   const job = await getJob();
   if (!job || job.tabId !== tabId) return null;
   await setJob(null);
+  void sendRunSummary(job, "you stopped the import.");
   await chrome.tabs.update(tabId, { url: job.originalUrl });
   return null;
 }
@@ -105,6 +119,7 @@ async function moveForward(tabId: number, job: MakerworldJob): Promise<void> {
   job.index += 1;
   if (job.index >= job.urls.length) {
     await setJob(null);
+    void sendRunSummary(job, null);
     await chrome.tabs.update(tabId, { url: job.originalUrl });
     return;
   }
@@ -151,7 +166,8 @@ export async function advanceJob(tabId: number): Promise<void> {
 
   try {
     if (resolveError) throw new Error(resolveError);
-    await importSingle({ url: currentUrl, collectionId: job.collectionId, resolved });
+    const print = await importSingle({ url: currentUrl, collectionId: job.collectionId, resolved }, { notify: false });
+    if (print?.id) job.printIds = [...(job.printIds ?? []), print.id];
   } catch (err) {
     // A manual "Import next" may have moved past this step while the request was in flight.
     if (!(await isStillAtStep(tabId, stepIndex))) return;
@@ -163,6 +179,7 @@ export async function advanceJob(tabId: number): Promise<void> {
       return;
     }
     await setJob(null);
+    void sendRunSummary(job, message);
     const error: MakerworldJobError = { message, imported: job.imported, total: job.total };
     await chrome.storage.local.set({ [JOB_ERROR_STORAGE_KEY]: error });
     await chrome.tabs.update(tabId, { url: job.originalUrl });
@@ -184,6 +201,7 @@ export async function forceAdvanceJob(tabId: number): Promise<null> {
     const status = await apiCall<ImportStatus>("GET", `/import/status?url=${encodeURIComponent(currentUrl)}`);
     if (status.already_imported) {
       job.imported += 1;
+      if (status.print_id) job.printIds = [...(job.printIds ?? []), status.print_id];
       if (job.collectionId && status.print_id) {
         await apiCall("POST", `/collection/${job.collectionId}/items/${status.print_id}`).catch(() => undefined);
       }
@@ -195,7 +213,11 @@ export async function forceAdvanceJob(tabId: number): Promise<null> {
   return null;
 }
 
+/** Closing the tab ends the run; its summary still goes out. A model still importing when the tab
+ *  closed lands, but isn't counted in it. */
 export async function dropJobIfForTab(tabId: number): Promise<void> {
   const job = await getJob();
-  if (job && job.tabId === tabId) await setJob(null);
+  if (!job || job.tabId !== tabId) return;
+  await setJob(null);
+  await sendRunSummary(job, "the MakerWorld tab was closed.");
 }

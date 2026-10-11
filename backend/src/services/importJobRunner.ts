@@ -187,6 +187,7 @@ export async function runMakerworldProfilesImportJob(
     }
     const label = title ? `"${title}"` : "a MakerWorld model";
     await createNotification(userId, {
+      type: "import",
       title: `Imported ${imported} of ${profileIds.length} print profiles from MakerWorld`,
       body: bodyParts.length ? `Of ${label} — ${bodyParts.join(", ")}.` : `Of ${label}.`,
       externalUrl: body.url,
@@ -317,6 +318,7 @@ export async function runCollectionImportJob(
       );
     if (otherFailed) bodyParts.push(`${otherFailed} failed`);
     await createNotification(userId, {
+      type: "import",
       title: `Imported ${imported} of ${body.design_ids.length} models from MakerWorld`,
       body: bodyParts.length ? `From ${label} — ${bodyParts.join(", ")}.` : `From ${label}.`,
       externalUrl: body.url,
@@ -428,6 +430,7 @@ async function runThingiverseThingsImportJob(
     if (otherFailed) bodyParts.push(`${otherFailed} failed`);
     const label = sourceLabel(collectionTitle);
     await createNotification(userId, {
+      type: "import",
       title: `Imported ${imported} of ${body.thing_ids.length} models from Thingiverse`,
       body: bodyParts.length ? `From ${label} — ${bodyParts.join(", ")}.` : `From ${label}.`,
       externalUrl: body.url,
@@ -549,6 +552,7 @@ export async function runPrintablesCollectionImportJob(
     if (rateLimited) bodyParts.push(`${rateLimited} rate-limited by Printables — wait a while, then retry`);
     if (otherFailed) bodyParts.push(`${otherFailed} failed`);
     await createNotification(userId, {
+      type: "import",
       title: `Imported ${imported} of ${body.model_ids.length} models from Printables`,
       body: bodyParts.length ? `From "${collectionTitle}" — ${bodyParts.join(", ")}.` : `From "${collectionTitle}".`,
       externalUrl: body.url,
@@ -605,6 +609,7 @@ export async function runZipImportJob(jobId: string, userId: string, body: ZipIm
     const bodyParts: string[] = [];
     if (failed.length) bodyParts.push(`${failed.length} failed`);
     await createNotification(userId, {
+      type: "import",
       title: `Imported ${prints.length} of ${body.entries.length} models from ${filename}`,
       body: bodyParts.length ? `${bodyParts.join(", ")}.` : null,
       externalUrl: body.url,
@@ -872,6 +877,7 @@ async function runLinks(jobId: string, userId: string, body: LinksImportJobBody)
       bodyParts.push(`${failedCount} failed — retry them from the import's progress bar`);
     }
     await createNotification(userId, {
+      type: "import",
       title: `Imported ${totalImported} of ${total} models`,
       body: bodyParts.length ? `${bodyParts.join(", ")}.` : null,
       externalUrl: job.sourceUrl,
@@ -949,6 +955,7 @@ async function pauseSyncJob(job: ImportJob, reason: StopReason, newPrintIds: str
       : "An admin can start it again from the import queue once that clears.",
   );
   await createNotification(job.userId, {
+    type: "sync",
     title: `Syncing "${name}" is paused`,
     body: parts.join(" "),
     externalUrl: sync?.sourceUrl ?? job.sourceUrl,
@@ -982,6 +989,7 @@ async function notifySyncJobDone(
   }
   const count = newPrintIds.length;
   await createNotification(job.userId, {
+    type: "sync",
     title: count
       ? `${count} new model${count === 1 ? "" : "s"} synced into "${name}"`
       : `Couldn't sync new models into "${name}"`,

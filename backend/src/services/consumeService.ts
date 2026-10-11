@@ -343,6 +343,7 @@ function consumeNotification({ models, files, failed, printIds }: ConsumeSummary
     );
   }
   return {
+    type: "consume" as const,
     title: `Imported ${plural(models, "model")} from the consume folder`,
     body: bodyParts.join(" "),
     internalPath: models === 1 ? `/models/${printIds[0]}` : "/models",

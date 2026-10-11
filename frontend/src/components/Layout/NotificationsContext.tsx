@@ -1,13 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
-import { notificationsApi, type Notification } from "../../api/notifications";
+import { notificationsApi } from "../../api/notifications";
 import { UnauthorizedError } from "../../api/client";
 
 type NotificationsContextValue = {
-  items: Notification[];
   unreadCount: number;
   refresh: () => Promise<void>;
-  markAllRead: () => Promise<void>;
+  /** Resolves to the time stamped on them (null if it failed): what counts as new while the list is open. */
+  markAllRead: () => Promise<string | null>;
 };
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
@@ -15,6 +15,7 @@ const NotificationsContext = createContext<NotificationsContextValue | null>(nul
 // Only catches notifications from other tabs/devices; the tracked import job refreshes directly.
 const POLL_INTERVAL_MS = 45_000;
 
+/** The unread count for the bell's badge. The lists themselves load per tab (useNotificationFeed). */
 export function NotificationsProvider({
   onUnauthorized,
   children,
@@ -22,27 +23,35 @@ export function NotificationsProvider({
   onUnauthorized?: () => void;
   children: React.ReactNode;
 }) {
-  const [items, setItems] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
   const refresh = useCallback(async () => {
     try {
-      const result = await notificationsApi.list();
-      setItems(result.items);
+      const result = await notificationsApi.list({ limit: 1 });
       setUnreadCount(result.unread_count);
     } catch (err) {
       if (err instanceof UnauthorizedError) onUnauthorized?.();
     }
   }, [onUnauthorized]);
 
-  const markAllRead = useCallback(async () => {
-    try {
-      await notificationsApi.markAllRead();
-      setUnreadCount(0);
-      setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-    } catch (err) {
-      if (err instanceof UnauthorizedError) onUnauthorized?.();
-    }
+  // Overlapping calls share one request: a second one would find nothing left to mark and answer a
+  // later time, hiding what the first one marked (React runs effects twice in development).
+  const pendingMarkAll = useRef<Promise<string | null> | null>(null);
+  const markAllRead = useCallback(() => {
+    pendingMarkAll.current ??= notificationsApi
+      .markAllRead()
+      .then((readAt) => {
+        setUnreadCount(0);
+        return readAt;
+      })
+      .catch((err: unknown) => {
+        if (err instanceof UnauthorizedError) onUnauthorized?.();
+        return null;
+      })
+      .finally(() => {
+        pendingMarkAll.current = null;
+      });
+    return pendingMarkAll.current;
   }, [onUnauthorized]);
 
   useEffect(() => {
@@ -54,10 +63,7 @@ export function NotificationsProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const value = useMemo(
-    () => ({ items, unreadCount, refresh, markAllRead }),
-    [items, unreadCount, refresh, markAllRead],
-  );
+  const value = useMemo(() => ({ unreadCount, refresh, markAllRead }), [unreadCount, refresh, markAllRead]);
 
   return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;
 }

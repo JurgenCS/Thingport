@@ -5,6 +5,8 @@ import { startConsumeWatcher } from "./services/consumeService";
 import { startCollectionSyncScheduler } from "./services/collectionSyncRunner";
 import { SYNC_JOB_INTERRUPTED } from "./services/importJobRunner";
 import { seedFlaresolverrUrl } from "./services/settingsService";
+import { startNotificationCleanup } from "./services/notificationService";
+import { startSystemNotificationSync } from "./services/systemNotificationService";
 
 const app = createApp();
 
@@ -27,4 +29,6 @@ app.listen(API_PORT, () => {
   console.log(`Thingport API listening on port ${API_PORT}`);
   startConsumeWatcher();
   startCollectionSyncScheduler();
+  startNotificationCleanup();
+  startSystemNotificationSync();
 });

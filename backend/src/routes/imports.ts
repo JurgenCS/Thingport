@@ -4,6 +4,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../auth";
 import { HttpError } from "../utils/fileUtils";
+import { prisma } from "../db";
 import { normalizeImportUrl } from "../utils/urlUtils";
 import { parseBody } from "../utils/validate";
 import { asyncHandler } from "../utils/asyncHandler";
@@ -52,6 +53,7 @@ import {
   runZipImportJob,
 } from "../services/importJobRunner";
 import { createLog } from "../services/auditLog";
+import { notifyImportRun, notifySingleImport } from "../services/modelNotifications";
 import { toImportJobItemOut, toImportJobOut, toPrintOut } from "../dto";
 import type { Prisma } from "@prisma/client";
 
@@ -71,6 +73,8 @@ const importRequestSchema = z.object({
   resolved_download_url: z.string().nullable().optional(),
   resolved_instance_id: z.string().nullable().optional(),
   makerworld_design: z.record(z.unknown()).nullable().optional(),
+  // False for each model of a run the client drives itself; the run sends one summary at the end.
+  notify: z.boolean().optional(),
 });
 
 // Falls back to the cookie saved in Settings when the request doesn't carry one.
@@ -84,10 +88,26 @@ async function withStoredMakerworldCookie<T extends { makerworld_cookie?: string
 }
 
 async function importAndDescribe(userId: string, url: string, body: z.infer<typeof importRequestSchema>) {
-  const result = await importPrintFromUrl(userId, url, body);
+  let result;
+  try {
+    result = await importPrintFromUrl(userId, url, body);
+  } catch (err) {
+    if (body.notify !== false) {
+      const error = err instanceof HttpError ? err.message : "Something went wrong on the server.";
+      await notifySingleImport(userId, url, { error }).catch((e) => console.error("Import notification failed:", e));
+    }
+    throw err;
+  }
   const { print, plates, author, previewImages } = result;
   const importOutcome = result.alreadyImported ? "already_imported" : result.profileAdded ? "profile_added" : "created";
   void createLog({ userId, action: "model_imported", targetId: print.id, details: { name: print.name, url } });
+  if (body.notify !== false) {
+    await notifySingleImport(userId, url, {
+      printId: print.id,
+      name: print.title || print.name,
+      outcome: importOutcome,
+    }).catch((e) => console.error("Import notification failed:", e));
+  }
   return { ...toPrintOut(print, plates, [], null, author, previewImages), import_outcome: importOutcome };
 }
 
@@ -104,6 +124,40 @@ router.post(
       return;
     }
     res.json(await importAndDescribe(req.userId!, url, body));
+  }),
+);
+
+// The end of a run the client drove one model at a time (the extension's guided MakerWorld import).
+const importSummarySchema = z.object({
+  source_url: z.string().url(),
+  total: z.number().int().min(1).max(10_000),
+  print_ids: z.array(z.string()).max(10_000),
+  collection_id: z.string().nullable().optional(),
+  // Why the run stopped early, if it did.
+  stopped: z.string().max(500).nullable().optional(),
+});
+router.post(
+  "/import/summary",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(importSummarySchema, req.body);
+    const prints = await prisma.print.findMany({
+      where: { id: { in: body.print_ids }, userId: req.userId! },
+      select: { id: true, name: true, title: true },
+    });
+    const collection = body.collection_id
+      ? await prisma.collection.findFirst({
+          where: { id: body.collection_id, userId: req.userId! },
+          select: { id: true },
+        })
+      : null;
+    await notifyImportRun(req.userId!, {
+      sourceUrl: body.source_url,
+      total: body.total,
+      prints: prints.map((p) => ({ id: p.id, name: p.title || p.name })),
+      collectionId: collection?.id ?? null,
+      stopped: body.stopped ?? null,
+    });
+    res.json({ ok: true });
   }),
 );
 

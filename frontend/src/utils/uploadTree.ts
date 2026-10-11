@@ -168,18 +168,25 @@ export function uploadEntriesToCategory(
   return uploadEach(entries, categoryResolver(parentCategoryId), onUnauthorized);
 }
 
+// A folder pick isn't filtered by the file picker, so skip what couldn't become a model on its own.
+const uploadable = (entries: UploadEntry[]) => entries.filter((e) => UPLOAD_EXTS.includes(extOf(e.file.name)));
+
+/** `batched`: more than one request, each sent without a notification; the caller sends the summary.
+ *  A lone request notifies by itself, so it's recorded even if the page closes mid-upload. */
 async function uploadEach(
   entries: UploadEntry[],
   resolveCategory: ReturnType<typeof categoryResolver>,
   onUnauthorized?: () => void,
+  partOfBatch = false,
 ) {
   const failed: string[] = [];
   let uploaded = 0;
   const uploadedEntries: UploadEntry[] = [];
   const prints: Print[] = [];
+  const todo = uploadable(entries);
+  const batched = partOfBatch || todo.length > 1;
 
-  // A folder pick isn't filtered by the file picker, so skip what couldn't become a model on its own.
-  for (const entry of entries.filter((e) => UPLOAD_EXTS.includes(extOf(e.file.name)))) {
+  for (const entry of todo) {
     try {
       const segments = splitPath(entry);
       let categoryId: string | null;
@@ -192,7 +199,7 @@ async function uploadEach(
         continue;
       }
       // Folder-tree leaves are always single-plate prints.
-      const result = await printsApi.upload([entry.file], { category_id: categoryId || undefined });
+      const result = await printsApi.upload([entry.file], { category_id: categoryId || undefined, notify: !batched });
       uploaded += 1;
       uploadedEntries.push(entry);
       prints.push(...result.prints);
@@ -205,7 +212,7 @@ async function uploadEach(
       failed.push(failureLabel(entry.file.name, err));
     }
   }
-  return { uploaded, failed, uploadedEntries, prints };
+  return { uploaded, failed, uploadedEntries, prints, batched };
 }
 
 /**
@@ -237,6 +244,7 @@ export async function uploadFoldersAsModels(
   const uploadedEntries: UploadEntry[] = [];
   const prints: Print[] = [];
   const resolveCategory = categoryResolver(parentCategoryId);
+  const batched = modelGroups.length + uploadable(rest).length > 1;
 
   for (const group of modelGroups) {
     const folderName = group.segments[group.segments.length - 1];
@@ -255,7 +263,7 @@ export async function uploadFoldersAsModels(
       }
       const result = await printsApi.upload(
         files.map((e) => e.file),
-        { title: folderName, category_id: categoryId || undefined, mode: "multiplate" },
+        { title: folderName, category_id: categoryId || undefined, mode: "multiplate", notify: !batched },
       );
       uploaded += 1;
       uploadedEntries.push(...files);
@@ -279,7 +287,7 @@ export async function uploadFoldersAsModels(
     } catch (err) {
       if (err instanceof UnauthorizedError) {
         onUnauthorized?.();
-        return { uploaded, failed, uploadedEntries, prints };
+        return { uploaded, failed, uploadedEntries, prints, batched };
       }
       console.error("Upload failed for", folderName, err);
       failed.push(failureLabel(folderName, err));
@@ -287,11 +295,11 @@ export async function uploadFoldersAsModels(
   }
 
   if (rest.length) {
-    const result = await uploadEach(rest, resolveCategory, onUnauthorized);
+    const result = await uploadEach(rest, resolveCategory, onUnauthorized, batched);
     uploaded += result.uploaded;
     failed.push(...result.failed);
     uploadedEntries.push(...result.uploadedEntries);
     prints.push(...result.prints);
   }
-  return { uploaded, failed, uploadedEntries, prints };
+  return { uploaded, failed, uploadedEntries, prints, batched };
 }

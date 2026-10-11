@@ -248,7 +248,22 @@
       "hoursAgo_one": "{{count}} hour ago",
       "hoursAgo_other": "{{count}} hours ago",
       "daysAgo_one": "{{count}} day ago",
-      "daysAgo_other": "{{count}} days ago"
+      "daysAgo_other": "{{count}} days ago",
+      "clearAll": "Clear all",
+      "clearAllConfirm": "Delete all your notifications? This can't be undone.",
+      "viewAll": "View all",
+      "delete": "Delete notification",
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "loadFailed": "Couldn't load notifications.",
+      "retention": "Read notifications are deleted after 30 days, unread ones after 90.",
+      "tabAll": "All",
+      "tabUnread": "Unread",
+      "tabSystem": "System",
+      "emptyUnread": "You're all caught up.",
+      "emptySystem": "No announcements from Thingport.",
+      "clearUnreadConfirm": "Delete all unread notifications? This can't be undone.",
+      "clearSystemConfirm": "Delete all system notifications? They won't be sent again. This can't be undone."
     },
     "search": {
       "placeholder": "Search models, collections, tags…",

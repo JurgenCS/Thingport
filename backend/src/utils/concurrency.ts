@@ -25,3 +25,16 @@ export async function mapWithConcurrency<T, R>(
   await Promise.all(runners);
   return results;
 }
+
+/** Runs tasks for the same key one after another; different keys don't wait on each other. */
+export function createKeyedLock() {
+  const tails = new Map<string, Promise<unknown>>();
+  return function withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    const next = (tails.get(key) ?? Promise.resolve()).catch(() => undefined).then(fn);
+    tails.set(key, next);
+    void next.finally(() => {
+      if (tails.get(key) === next) tails.delete(key);
+    });
+    return next;
+  };
+}

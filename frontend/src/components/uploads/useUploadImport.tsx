@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { UnauthorizedError } from "../../api/client";
 import { importsApi, type ImportOutcome, type MakerworldProfileScope } from "../../api/imports";
 import { printsApi, type Print } from "../../api/prints";
+import { useNotifications } from "../Layout/NotificationsContext";
 import {
   entriesFromFileList,
   hasModelFolders,
@@ -45,6 +46,7 @@ type Props = {
 export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUnauthorized }: Props) {
   const { t } = useTranslation("app");
   const showToast = useToast();
+  const { refresh: refreshNotifications } = useNotifications();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
@@ -102,10 +104,19 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
     let uploaded = 0;
     const failed: string[] = [];
     const prints: Print[] = [];
-    const applyResult = (result: { uploaded: number; failed: string[]; prints?: Print[] }) => {
+    // Batches upload without a notification per request; they get one summary at the end.
+    const batchPrintIds: string[] = [];
+    const batchFailed: string[] = [];
+    let batched = false;
+    const applyResult = (result: { uploaded: number; failed: string[]; prints?: Print[]; batched?: boolean }) => {
       uploaded += result.uploaded;
       failed.push(...result.failed);
       if (result.prints) prints.push(...result.prints);
+      if (result.batched) {
+        batched = true;
+        batchPrintIds.push(...(result.prints ?? []).map((p) => p.id));
+        batchFailed.push(...result.failed);
+      }
     };
     if (normalEntries.length) {
       if (isFlatFileSet(normalEntries)) {
@@ -164,6 +175,13 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
         },
       });
     }
+    if (batched) {
+      await printsApi.uploadSummary(batchPrintIds, batchFailed).catch((err) => {
+        if (err instanceof UnauthorizedError) onUnauthorized?.();
+        else console.error("Upload summary failed", err);
+      });
+    }
+    void refreshNotifications();
     if (uploaded) {
       onUploaded();
       if (uploaded === 1 && prints.length === 1) {
@@ -407,6 +425,8 @@ export function useUploadImport({ onUploaded, categoryId, makerworldCookie, onUn
       alert(message);
     } finally {
       setImporting(false);
+      // The import's notification is already written; show it on the bell now, not at the next poll.
+      void refreshNotifications();
     }
   };
 

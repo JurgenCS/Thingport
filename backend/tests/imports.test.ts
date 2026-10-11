@@ -343,8 +343,16 @@ describe("import job lock", () => {
 
 describe("notifications", () => {
   it("lists notifications with an accurate unread count, clearable via mark-all-read", async () => {
-    await createNotification(userId, { title: "Test notification A", externalUrl: "https://example.com/a" });
-    await createNotification(userId, { title: "Test notification B", internalPath: "/models/collections/xyz" });
+    await createNotification(userId, {
+      type: "import",
+      title: "Test notification A",
+      externalUrl: "https://example.com/a",
+    });
+    await createNotification(userId, {
+      type: "sync",
+      title: "Test notification B",
+      internalPath: "/models/collections/xyz",
+    });
 
     const before = await listNotifications(userId);
     expect(before.unreadCount).toBeGreaterThanOrEqual(2);

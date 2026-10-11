@@ -221,6 +221,35 @@ go run ./cmd/thingport-bridge
 macOS URL-scheme handling uses Cocoa and needs cgo, so the macOS build only works on a Mac.
 Windows and Linux binaries cross-compile with `CGO_ENABLED=0`.
 
+## System notifications
+
+Announcements for every instance, such as a known bug or a new feature, live in
+[`system-notifications.json`](../system-notifications.json) at the repo root. Each backend fetches it
+from `main` at startup and every 6 hours, and sends each entry once to each user it's meant for, as an
+ordinary notification (the System tab). To post one, add an entry and merge it:
+
+```json
+{
+  "notifications": [
+    {
+      "id": "2026-10-imports-fail-on-printables",
+      "title": "Printables imports fail since Oct 10",
+      "body": "Printables changed its API. A fix is on the way; update when it lands.",
+      "url": "https://github.com/TautvydasDerzinskas/Thingport/issues/123",
+      "published_at": "2026-10-11T12:00:00Z",
+      "audience": "admins"
+    }
+  ]
+}
+```
+
+- `id` must be unique and never reused: it's what stops an entry being sent twice.
+- `body` and `url` are optional; `url` must be `https://`, and the notification shows its domain.
+- `published_at` is the date shown; a future date waits until then.
+- `audience` is `admins` (the default) or `all` for every user.
+- Entries older than 90 days aren't sent, so old ones can stay in the file or be removed.
+- `SYSTEM_NOTIFICATIONS_URL` points a backend at another file; an empty value turns fetching off.
+
 ## Related documents
 
 - [CONTRIBUTING.md](../CONTRIBUTING.md) -- branch, commit and pull request workflow

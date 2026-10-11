@@ -258,6 +258,7 @@ async function runSync(syncId: string): Promise<SyncOutcome> {
 async function notifyFiled(sync: SyncWithCollection, printIds: string[]): Promise<void> {
   const n = printIds.length;
   await createNotification(sync.userId, {
+    type: "sync",
     title: `${n} model${n === 1 ? "" : "s"} added to "${sync.collection.name}"`,
     body: syncLikesUsername(sync)
       ? `${n === 1 ? "It was" : "They were"} liked on Thingiverse and already in your library.`
@@ -279,6 +280,7 @@ async function unsyncGone(sync: SyncWithCollection): Promise<void> {
     details: { name, provider: sync.provider, url: sync.sourceUrl, reason: "source_gone" },
   });
   await createNotification(sync.userId, {
+    type: "sync",
     title: `"${name}" is no longer synced`,
     body: `${capitalize(sourceDescription(sync))} can't be found any more, so new models won't come in. The models already in "${name}" stay.`,
     externalUrl: sync.sourceUrl,
@@ -337,6 +339,7 @@ async function notifyManualOutcome(before: SyncWithCollection, outcome: SyncOutc
   const note = message[outcome];
   if (!note) return;
   await createNotification(before.userId, {
+    type: "sync",
     ...note,
     externalUrl: before.sourceUrl,
     internalPath: `/models/collections/${before.collectionId}`,

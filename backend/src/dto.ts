@@ -534,22 +534,26 @@ export function toAdminImportJobOut(row: QueueJobRow): AdminImportJobOut {
 
 export type NotificationOut = {
   id: string;
+  type: string;
   title: string;
   body: string | null;
   external_url: string | null;
   internal_path: string | null;
   read: boolean;
+  read_at: string | null;
   created_at: string;
 };
 
 export function toNotificationOut(notification: Notification): NotificationOut {
   return {
     id: notification.id,
+    type: notification.type,
     title: notification.title,
     body: notification.body,
     external_url: notification.externalUrl,
     internal_path: notification.internalPath,
     read: notification.readAt !== null,
+    read_at: notification.readAt?.toISOString() ?? null,
     created_at: notification.createdAt.toISOString(),
   };
 }

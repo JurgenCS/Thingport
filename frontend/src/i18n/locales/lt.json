@@ -248,7 +248,22 @@
       "hoursAgo_one": "prieš {{count}} valandą",
       "hoursAgo_other": "prieš {{count}} valandų",
       "daysAgo_one": "prieš {{count}} dieną",
-      "daysAgo_other": "prieš {{count}} dienų"
+      "daysAgo_other": "prieš {{count}} dienų",
+      "clearAll": "Išvalyti viską",
+      "clearAllConfirm": "Ištrinti visus pranešimus? To nebus galima atšaukti.",
+      "viewAll": "Rodyti visus",
+      "delete": "Ištrinti pranešimą",
+      "today": "Šiandien",
+      "yesterday": "Vakar",
+      "loadFailed": "Nepavyko įkelti pranešimų.",
+      "retention": "Perskaityti pranešimai ištrinami po 30 dienų, neperskaityti – po 90.",
+      "tabAll": "Visi",
+      "tabUnread": "Neperskaityti",
+      "tabSystem": "Sistema",
+      "emptyUnread": "Viskas perskaityta.",
+      "emptySystem": "Thingport pranešimų nėra.",
+      "clearUnreadConfirm": "Ištrinti visus neperskaitytus pranešimus? To nebus galima atšaukti.",
+      "clearSystemConfirm": "Ištrinti visus sistemos pranešimus? Jie nebus siunčiami iš naujo. To nebus galima atšaukti."
     },
     "search": {
       "placeholder": "Ieškoti modelių, kolekcijų, žymų…",

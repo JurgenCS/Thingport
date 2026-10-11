@@ -214,6 +214,8 @@ export const printsApi = {
       tags?: string[];
       category_id?: string;
       mode?: "separate" | "multiplate";
+      /** False for each request of a batch; the batch sends one summary (uploadSummary) instead. */
+      notify?: boolean;
     } = {},
   ): Promise<UploadPrintsResult> => {
     const fd = new FormData();
@@ -225,6 +227,7 @@ export const printsApi = {
     if (opts.tags && opts.tags.length) fd.set("tags", opts.tags.join(","));
     if (opts.category_id) fd.set("category_id", opts.category_id);
     if (opts.mode && files.length > 1) fd.set("mode", opts.mode);
+    if (opts.notify === false) fd.set("notify", "false");
     const res = await fetch(`${apiBase()}/upload`, {
       method: "POST",
       body: fd,
@@ -311,6 +314,16 @@ export const printsApi = {
     });
     assertOk(res, "Tag update failed");
     return res.json();
+  },
+
+  /** One notification for a batch uploaded one request at a time. Best-effort. */
+  uploadSummary: async (printIds: string[], failed: string[]): Promise<void> => {
+    const res = await fetch(`${apiBase()}/upload/summary`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ print_ids: printIds, failed }),
+    });
+    assertOk(res, "Failed to record the upload");
   },
 
   uploadGeneratedThumbnail: async (plateId: string, image: Blob): Promise<Print> => {

@@ -4,7 +4,9 @@
 
 import type { ImportJob, Prisma } from "@prisma/client";
 import { prisma } from "../db";
+import { createNotification } from "./notificationService";
 import { HttpError } from "../utils/fileUtils";
+import { createKeyedLock } from "../utils/concurrency";
 import { getActiveJob, resetFailedItems } from "./importJobService";
 import {
   isRunnerLive,
@@ -89,47 +91,21 @@ export async function pauseLinksJob(job: ImportJob): Promise<void> {
 // ---- Sending links to the queue (the extension) ----
 
 // Two quick sends from the extension would otherwise each create a PAUSED job.
-const queueLocks = new Map<string, Promise<unknown>>();
+const withUserLock = createKeyedLock();
 
-function withUserLock<T>(userId: string, fn: () => Promise<T>): Promise<T> {
-  const previous = queueLocks.get(userId) ?? Promise.resolve();
-  const next = previous.catch(() => undefined).then(fn);
-  queueLocks.set(userId, next);
-  void next.finally(() => {
-    if (queueLocks.get(userId) === next) queueLocks.delete(userId);
-  });
-  return next;
-}
-
-function waitingTitle(count: number): string {
-  return count === 1 ? "1 link waiting in the import queue" : `${count} links waiting in the import queue`;
-}
-
-/** One notification per PAUSED queue, kept current: each new link refreshes its count and marks it
- *  unread again instead of stacking a notification per link. */
-async function refreshQueueNotification(jobId: string): Promise<void> {
-  const job = await prisma.importJob.findUnique({ where: { id: jobId }, include: { user: true } });
-  if (!job || job.status !== "PAUSED") return;
-  const waiting = await prisma.importJobItem.count({ where: { jobId, status: { in: ["PENDING", "FAILED"] } } });
-  const isAdmin = job.user.role === "ADMIN";
-  const data = {
-    title: waitingTitle(waiting),
+/** Sent once, when links start collecting in a new paused queue. The queue shows its own live count;
+ *  this notification is never edited or removed with it. */
+async function notifyQueueStarted(userId: string): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  const isAdmin = user?.role === "ADMIN";
+  await createNotification(userId, {
+    type: "queue",
+    title: "Links are waiting in the import queue",
     body: isAdmin
       ? "Paused until you start it from Administration > Import queue."
       : "Paused until an admin starts it from the import queue.",
     internalPath: isAdmin ? "/admin-queue" : null,
-    readAt: null,
-    createdAt: new Date(),
-  };
-  const existing = job.notificationId
-    ? await prisma.notification.findFirst({ where: { id: job.notificationId, userId: job.userId } })
-    : null;
-  if (existing) {
-    await prisma.notification.update({ where: { id: existing.id }, data });
-    return;
-  }
-  const created = await prisma.notification.create({ data: { ...data, userId: job.userId } });
-  await prisma.importJob.update({ where: { id: jobId }, data: { notificationId: created.id } });
+  });
 }
 
 export type QueueLinkResult = { job: ImportJob; itemId: string; duplicate: boolean; waiting: number };
@@ -158,6 +134,7 @@ export async function queueLink(userId: string, url: string, options: QueuedLink
           payload: { notes: null, tags: [], category_id: null, scope: "url" },
         },
       });
+      await notifyQueueStarted(userId);
     }
 
     const existing = await prisma.importJobItem.findFirst({
@@ -179,7 +156,6 @@ export async function queueLink(userId: string, url: string, options: QueuedLink
         data: { total: await prisma.importJobItem.count({ where: { jobId: job.id } }) },
       });
     }
-    await refreshQueueNotification(job.id);
     const waiting = await prisma.importJobItem.count({ where: { jobId: job.id, status: "PENDING" } });
     return { job, itemId, duplicate: Boolean(existing), waiting };
   });
@@ -233,20 +209,15 @@ function assertIdle(job: ImportJob): void {
   }
 }
 
-/** A deleted queue's "N links waiting" notification would point at nothing. A started queue's
- *  stays: it's the history the completion notification follows. */
-async function deleteJobAndWaitingNotification(job: ImportJob): Promise<void> {
+async function deleteJob(job: ImportJob): Promise<void> {
   bulkQueue = bulkQueue.filter((entry) => entry.jobId !== job.id);
   await prisma.importJob.delete({ where: { id: job.id } });
-  if (job.status === "PAUSED" && job.notificationId) {
-    await prisma.notification.deleteMany({ where: { id: job.notificationId, userId: job.userId } });
-  }
 }
 
 export async function deleteQueueJob(jobId: string): Promise<void> {
   const job = await getQueueJob(jobId);
   assertIdle(job);
-  await deleteJobAndWaitingNotification(job);
+  await deleteJob(job);
 }
 
 /** Drops one link from an idle job. A job left without links is deleted with it. */
@@ -257,7 +228,7 @@ export async function removeQueueItem(itemId: string): Promise<{ jobDeleted: boo
   await prisma.importJobItem.delete({ where: { id: itemId } });
   const left = await prisma.importJobItem.count({ where: { jobId: item.jobId } });
   if (!left) {
-    await deleteJobAndWaitingNotification(item.job);
+    await deleteJob(item.job);
     return { jobDeleted: true };
   }
   await prisma.importJob.update({
@@ -268,7 +239,6 @@ export async function removeQueueItem(itemId: string): Promise<{ jobDeleted: boo
       failedCount: await prisma.importJobItem.count({ where: { jobId: item.jobId, status: "FAILED" } }),
     },
   });
-  await refreshQueueNotification(item.jobId);
   return { jobDeleted: false };
 }
 

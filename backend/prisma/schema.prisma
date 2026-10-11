@@ -67,6 +67,7 @@ model User {
   collectionSyncs          CollectionSync[]
   importJobs               ImportJob[]
   notifications            Notification[]
+  systemReceipts           SystemReceipt[]
   logs                     Log[]
   authorLinks              AuthorLink[]
   bookmarks                Bookmark[]
@@ -299,8 +300,6 @@ model ImportJob {
   resultPrintId      String?
   // The LINKS job's shared request body (never the MakerWorld cookie), so a retry can rerun it.
   payload            Json?
-  // The "N links waiting" notification of a PAUSED queue, updated as links are added to it.
-  notificationId     String?
   // Set on the LINKS jobs a collection sync queues. They pause on a rate limit instead of failing
   // the rest, and are kept out of the extension's "Add to the queue" job.
   collectionSyncId   String?
@@ -342,6 +341,10 @@ model Notification {
   id           String    @id @default(cuid())
   userId       String
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// What it's about, for its icon: import, sync, queue, consume, ai, system or general.
+  type         String    @default("general")
+  /// Set on notifications later ones may fold into, e.g. { key: "single-import", items: [...] }.
+  group        Json?
   title        String
   body         String?
   externalUrl  String?
@@ -351,6 +354,20 @@ model Notification {
 
   @@index([userId, readAt])
   @@index([userId, createdAt])
+  // For the daily cleanup of old notifications.
+  @@index([createdAt])
+}
+
+/// Which system notifications (from the repo's system-notifications.json) a user was already sent,
+/// so deleting or pruning the notification never brings it back.
+model SystemReceipt {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  systemId  String
+  createdAt DateTime @default(now())
+
+  @@id([userId, systemId])
+  @@index([createdAt])
 }
 
 /// A creator on a source platform. `id` is provider-prefixed ("makerworld:3582000380") so

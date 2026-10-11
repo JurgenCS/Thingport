@@ -28,13 +28,11 @@ async function pollImportTask(taskId: string): Promise<Print> {
 
 /** One message covering import and collection filing, so both complete even if the tab navigates
  *  away: the background outlives the content script. */
-export async function importSingle({
-  url,
-  entries,
-  collectionId,
-  resolved,
-  title,
-}: ImportSinglePayload): Promise<Print | null> {
+/** `notify: false` for each model of a run that sends its own summary at the end. */
+export async function importSingle(
+  { url, entries, collectionId, resolved, title }: ImportSinglePayload,
+  { notify = true }: { notify?: boolean } = {},
+): Promise<Print | null> {
   // A page-resolved download lets the backend skip the resolution calls that trip MakerWorld's
   // CAPTCHA. The profile id lets another profile of an existing model be added as a file.
   const extra = resolved?.downloadUrl
@@ -55,7 +53,11 @@ export async function importSingle({
     // Asynchronous so the request never outlives the worker: Chromium kills an extension service
     // worker whose fetch() takes over 30s to answer. An older instance ignores `async` and
     // answers with the print itself.
-    const started = await apiCall<Print | { task_id: string }>("POST", "/import?async=1", { url, ...extra });
+    const started = await apiCall<Print | { task_id: string }>("POST", "/import?async=1", {
+      url,
+      ...extra,
+      ...(notify ? {} : { notify: false }),
+    });
     print = "task_id" in started ? await pollImportTask(started.task_id) : started;
   }
 

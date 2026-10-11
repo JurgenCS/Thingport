@@ -58,6 +58,8 @@ export type MakerworldJob = {
   startAt: number;
   /** MakerWorld wants a CAPTCHA: the run waits on this model until the user resumes it. */
   paused: boolean;
+  /** The models imported so far, for the run's one notification. Missing on a run saved by an older version. */
+  printIds?: string[];
 };
 
 export type MakerworldJobError = { message: string; imported: number; total: number };

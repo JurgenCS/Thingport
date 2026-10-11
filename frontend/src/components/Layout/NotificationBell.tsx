@@ -3,107 +3,128 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import IconButton from "@mui/material/IconButton";
 import Badge from "@mui/material/Badge";
-import Tooltip from "@mui/material/Tooltip";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
-import Link from "@mui/material/Link";
+import Popover from "@mui/material/Popover";
+import Stack from "@mui/material/Stack";
+import Tooltip from "@mui/material/Tooltip";
+import Typography from "@mui/material/Typography";
 import NotificationsIcon from "@mui/icons-material/Notifications";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useNotifications } from "./NotificationsContext";
-import type { Notification } from "../../api/notifications";
+import { useConfirm } from "../ConfirmProvider";
+import NotificationList from "../notifications/NotificationList";
+import NotificationTabs, { clearConfirmKey, emptyKey } from "../notifications/NotificationTabs";
+import { useNotificationFeed, useOpenedSince } from "../notifications/useNotificationFeed";
+import type { Notification, NotificationFilter } from "../../api/notifications";
 
-function relativeTime(iso: string, t: (key: string, opts?: Record<string, unknown>) => string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const minutes = Math.round(diffMs / 60_000);
-  if (minutes < 1) return t("notifications.justNow");
-  if (minutes < 60) return t("notifications.minutesAgo", { count: minutes });
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return t("notifications.hoursAgo", { count: hours });
-  const days = Math.round(hours / 24);
-  return t("notifications.daysAgo", { count: days });
-}
+const PREVIEW_LIMIT = 10;
 
-export default function NotificationBell() {
+/** Mounted only while the dropdown is open, so each opening loads the tab fresh. */
+function NotificationDropdown({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation("app");
   const navigate = useNavigate();
-  const { items, unreadCount, markAllRead } = useNotifications();
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const confirmDialog = useConfirm();
+  const [filter, setFilter] = useState<NotificationFilter>("all");
+  const opened = useOpenedSince();
+  const feed = useNotificationFeed(filter, PREVIEW_LIMIT, opened);
 
-  const handleOpen = (e: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(e.currentTarget);
-    if (unreadCount > 0) void markAllRead();
+  const handleOpenItem = (notification: Notification) => {
+    if (!notification.internal_path) return;
+    onClose();
+    navigate(notification.internal_path);
   };
 
-  const handleClose = () => setAnchorEl(null);
+  const handleClear = async () => {
+    const confirmed = await confirmDialog({
+      message: t(clearConfirmKey(filter)),
+      confirmLabel: t("notifications.clearAll"),
+      destructive: true,
+    });
+    if (confirmed) void feed.clear();
+  };
 
-  const handleItemClick = (notification: Notification) => {
-    handleClose();
-    if (notification.internal_path) navigate(notification.internal_path);
+  const handleViewAll = () => {
+    onClose();
+    navigate(filter === "all" ? "/notifications" : `/notifications?tab=${filter}`);
   };
 
   return (
     <>
+      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ pl: 2, pr: 1, py: 1 }}>
+        <Typography variant="subtitle1" fontWeight={700} sx={{ flex: 1 }}>
+          {t("notifications.label")}
+        </Typography>
+        {feed.items.length > 0 && (
+          <Button size="small" color="inherit" onClick={() => void handleClear()} sx={{ color: "text.secondary" }}>
+            {t("notifications.clearAll")}
+          </Button>
+        )}
+      </Stack>
+      <NotificationTabs value={filter} onChange={setFilter} />
+      <Divider />
+      <Box sx={{ overflowY: "auto", flex: 1, px: 1, py: 1, minHeight: 120 }}>
+        {feed.items.length > 0 ? (
+          <NotificationList
+            items={feed.items}
+            since={opened.since}
+            onOpen={handleOpenItem}
+            onDelete={(n) => void feed.remove(n)}
+          />
+        ) : feed.loading ? (
+          <Stack alignItems="center" sx={{ py: 3 }}>
+            <CircularProgress size={20} />
+          </Stack>
+        ) : (
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", py: 3 }}>
+            {t(feed.failed ? "notifications.loadFailed" : emptyKey(filter))}
+          </Typography>
+        )}
+      </Box>
+      <Divider />
+      <Button onClick={handleViewAll} sx={{ borderRadius: 0, py: 1.25 }}>
+        {t("notifications.viewAll")}
+      </Button>
+    </>
+  );
+}
+
+export default function NotificationBell() {
+  const { t } = useTranslation("app");
+  const { unreadCount } = useNotifications();
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const handleClose = () => setAnchorEl(null);
+
+  return (
+    <>
       <Tooltip title={t("notifications.label")}>
-        <IconButton size="small" onClick={handleOpen}>
+        <IconButton size="small" onClick={(e) => setAnchorEl(e.currentTarget)} aria-label={t("notifications.label")}>
           <Badge badgeContent={unreadCount} color="error" max={99}>
             <NotificationsIcon fontSize="small" />
           </Badge>
         </IconButton>
       </Tooltip>
-      <Menu
+      <Popover
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleClose}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
-        slotProps={{ paper: { sx: { width: 360, maxHeight: 420 } } }}
+        slotProps={{
+          paper: {
+            sx: {
+              width: 380,
+              maxWidth: "calc(100vw - 32px)",
+              display: "flex",
+              flexDirection: "column",
+              maxHeight: 560,
+            },
+          },
+        }}
       >
-        {items.length === 0 && (
-          <Stack alignItems="center" spacing={0.5} sx={{ py: 3, color: "text.secondary" }}>
-            <Typography variant="body2">{t("notifications.empty")}</Typography>
-          </Stack>
-        )}
-        {items.map((notification, idx) => (
-          <div key={notification.id}>
-            {idx > 0 && <Divider />}
-            <MenuItem
-              onClick={() => handleItemClick(notification)}
-              sx={{ whiteSpace: "normal", alignItems: "flex-start", py: 1 }}
-            >
-              <Stack spacing={0.25} sx={{ minWidth: 0, width: "100%" }}>
-                <Typography variant="body2" fontWeight={notification.read ? 400 : 700}>
-                  {notification.title}
-                </Typography>
-                {notification.body && (
-                  <Typography variant="caption" color="text.secondary">
-                    {notification.body}
-                  </Typography>
-                )}
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 0.25 }}>
-                  <Typography variant="caption" color="text.disabled">
-                    {relativeTime(notification.created_at, t)}
-                  </Typography>
-                  {notification.external_url && (
-                    <Link
-                      href={notification.external_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      sx={{ display: "inline-flex", alignItems: "center", gap: 0.25, fontSize: 12 }}
-                    >
-                      {t("notifications.viewSource")}
-                      <OpenInNewIcon sx={{ fontSize: 12 }} />
-                    </Link>
-                  )}
-                </Stack>
-              </Stack>
-            </MenuItem>
-          </div>
-        ))}
-      </Menu>
+        {anchorEl && <NotificationDropdown onClose={handleClose} />}
+      </Popover>
     </>
   );
 }

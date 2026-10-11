@@ -1,0 +1,12 @@
+{
+  "notifications": [
+    {
+      "id": "2026-10-welcome-system-notifications",
+      "title": "Thank you for using Thingport",
+      "body": "Thanks for using Thingport! From now on, major updates and new features will be announced here, in the System tab of your notifications.",
+      "url": "https://github.com/TautvydasDerzinskas/Thingport",
+      "published_at": "2026-10-11T12:00:00Z",
+      "audience": "all"
+    }
+  ]
+}

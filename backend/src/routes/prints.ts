@@ -28,6 +28,7 @@ import { estimateDownloadSize, resolvePrintsForDownload, sendPrintsZip } from ".
 import { systemCollectionKeyForId } from "../services/collectionService";
 import { createLog } from "../services/auditLog";
 import { recordActivity } from "../services/activityService";
+import { notifyUpload } from "../services/modelNotifications";
 import { fillSourceGaps } from "../services/fillGapsService";
 import { isNormalizable3mf, normalize3mfStatus, normalized3mfFor } from "../services/normalized3mfCache";
 import type { Prisma } from "@prisma/client";
@@ -110,6 +111,11 @@ router.post(
   asyncHandler(async (req, res) => {
     const files = (req.files as Express.Multer.File[]) || [];
     const body = req.body as Record<string, string | undefined>;
+    // A browser uploading a batch one request at a time sends notify=false, then one summary at the end.
+    const notify = body.notify !== "false";
+    // What made it in before any failure, so a partly failed request reports both halves truthfully.
+    const created: { id: string; name: string }[] = [];
+    const pending = new Set(files);
     try {
       if (!files.length) throw new HttpError(400, "No files uploaded");
       const mode = body.mode === "multiplate" ? "multiplate" : "separate";
@@ -137,6 +143,8 @@ router.post(
             { filename: safeName, mime, tempFilePath: file.path },
           ]);
           printsOut.push(toPrintOut(print, plates, [], null));
+          created.push({ id: print.id, name: print.title || print.name });
+          pending.delete(file);
           void recordActivity(req.userId!, "upload", print.id, print.name);
           void createLog({
             userId: req.userId!,
@@ -158,9 +166,12 @@ router.post(
         });
         const nameHint = path.parse(plateInputs[0].filename).name;
         const { print } = await createPrint(req.userId!, meta, nameHint, plateInputs);
+        created.push({ id: print.id, name: print.title || print.name });
+        for (const f of plateFiles) pending.delete(f);
 
         for (const f of supportingFiles) {
           await saveFileFromTemp(req.userId!, print.id, f.path, f.originalname, f.mimetype);
+          pending.delete(f);
         }
 
         printsOut.push(await printOutById(req.userId!, print.id));
@@ -172,12 +183,47 @@ router.post(
           details: { name: print.name },
         });
       }
+      if (notify) {
+        await notifyUpload(req.userId!, created).catch((err) => console.error("Upload notification failed:", err));
+      }
       res.json({ prints: printsOut });
+    } catch (err) {
+      if (notify && files.length) {
+        await notifyUpload(req.userId!, created, {
+          names: [...pending].map((f) => sanitizeFilename(f.originalname)),
+          reason: err instanceof HttpError ? err.message : undefined,
+        }).catch((e) => console.error("Upload notification failed:", e));
+      }
+      throw err;
     } finally {
       for (const f of files) {
         if (fs.existsSync(f.path)) fs.rmSync(f.path, { force: true });
       }
     }
+  }),
+);
+
+// The end of a batch the browser uploaded one request at a time, each sent with notify=false.
+const uploadSummarySchema = z.object({
+  print_ids: z.array(z.string()).max(1000),
+  failed: z.array(z.string().max(300)).max(1000).default([]),
+});
+router.post(
+  "/upload/summary",
+  asyncHandler(async (req, res) => {
+    const body = parseBody(uploadSummarySchema, req.body);
+    // Only the caller's own models, by their current names.
+    const prints = await prisma.print.findMany({
+      where: { id: { in: body.print_ids }, userId: req.userId! },
+      select: { id: true, name: true, title: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    });
+    await notifyUpload(
+      req.userId!,
+      prints.map((p) => ({ id: p.id, name: p.title || p.name })),
+      { names: body.failed },
+    );
+    res.json({ ok: true });
   }),
 );
 

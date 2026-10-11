@@ -26,6 +26,7 @@ import AdminPage from "./pages/AdminPage";
 import AdminSettingsPage from "./pages/AdminSettingsPage";
 import UsersPage from "./pages/UsersPage";
 import LogsPage from "./pages/LogsPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import TriggersPage from "./pages/TriggersPage";
 import ConnectionsPage from "./pages/ConnectionsPage";
 import CaptchaPage from "./pages/CaptchaPage";
@@ -210,6 +211,7 @@ function AppShell({
         />
         <Route path="/profile/password" element={<ChangePasswordPage onUnauthorized={onUnauthorized} />} />
         <Route path="/downloads" element={<DownloadPage />} />
+        <Route path="/notifications" element={<NotificationsPage onUnauthorized={onUnauthorized} />} />
         <Route
           path="/admin"
           element={isAdmin ? <AdminPage onUnauthorized={onUnauthorized} /> : <Navigate to="/" replace />}

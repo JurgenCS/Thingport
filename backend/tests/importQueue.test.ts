@@ -221,29 +221,26 @@ describe("the import queue", () => {
       expect((await job(parked.id)).status).toBe("PAUSED");
     });
 
-    it("keeps one notification per queue, updated with the count and unread again", async () => {
+    it("notifies once when a queue starts, and leaves the notification alone after that", async () => {
+      await prisma.importJob.deleteMany({ where: { userId: member.id, status: "PAUSED" } });
+      await prisma.notification.deleteMany({ where: { userId: member.id } });
       const first = await queue(member, { url: modelUrl(base + 2) });
-      const parked = await job(first.body.job_id);
-      expect(parked.notificationId).toBeTruthy();
-      await prisma.notification.update({ where: { id: parked.notificationId! }, data: { readAt: new Date() } });
-
       await queue(member, { url: modelUrl(base + 3) });
-      const notifications = await prisma.notification.findMany({
-        where: { userId: member.id, title: { contains: "waiting in the import queue" } },
-      });
+      const notifications = await prisma.notification.findMany({ where: { userId: member.id, type: "queue" } });
       expect(notifications).toHaveLength(1);
-      expect(notifications[0].title).toBe("2 links waiting in the import queue");
-      expect(notifications[0].readAt).toBeNull();
+      expect(notifications[0].title).toBe("Links are waiting in the import queue");
       // A member can't open the admin page, so the notification doesn't link there.
       expect(notifications[0].internalPath).toBeNull();
+
+      // The notification isn't tied to the queue: deleting it leaves the queue as it was.
       await prisma.notification.deleteMany({ where: { userId: member.id } });
+      expect((await job(first.body.job_id)).status).toBe("PAUSED");
     });
 
     it("links an admin's notification to the queue page", async () => {
-      const res = await queue(admin, { url: modelUrl(base + 4) });
-      const notification = await prisma.notification.findUnique({
-        where: { id: (await job(res.body.job_id)).notificationId! },
-      });
+      await prisma.notification.deleteMany({ where: { userId: admin.id } });
+      await queue(admin, { url: modelUrl(base + 4) });
+      const notification = await prisma.notification.findFirst({ where: { userId: admin.id, type: "queue" } });
       expect(notification!.internalPath).toBe("/admin-queue");
     });
 
@@ -581,13 +578,13 @@ describe("the import queue", () => {
       const removed = await request(app).delete(`/api/admin/import-queue/items/${first.id}`).set(auth(admin));
       expect(removed.body).toEqual({ jobDeleted: false });
       expect((await job(jobId)).total).toBe(1);
-      const notification = await prisma.notification.findUnique({ where: { id: (await job(jobId)).notificationId! } });
-      expect(notification!.title).toBe("1 link waiting in the import queue");
+      const notificationsBefore = await prisma.notification.count({ where: { userId: member.id } });
 
       const last = await request(app).delete(`/api/admin/import-queue/items/${second.id}`).set(auth(admin));
       expect(last.body).toEqual({ jobDeleted: true });
       expect(await prisma.importJob.findUnique({ where: { id: jobId } })).toBeNull();
-      expect(await prisma.notification.findUnique({ where: { id: notification!.id } })).toBeNull();
+      // Deleting the queue leaves notifications alone.
+      expect(await prisma.notification.count({ where: { userId: member.id } })).toBe(notificationsBefore);
       expect((await request(app).delete(`/api/admin/import-queue/items/${second.id}`).set(auth(admin))).status).toBe(
         404,
       );
