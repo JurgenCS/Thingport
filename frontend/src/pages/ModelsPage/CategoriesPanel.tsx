@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import Box from "@mui/material/Box";
 import type { Theme } from "@mui/material/styles";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
@@ -10,13 +11,13 @@ import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import Collapse from "@mui/material/Collapse";
-import CircularProgress from "@mui/material/CircularProgress";
 import SettingsIcon from "@mui/icons-material/Settings";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import type { Category, CategoryKind } from "../../api/categories";
 import { translateCategoryDisplay } from "../../utils/translateCategoryDisplay";
 import { dividerBorderColor } from "../../theme";
 import { ancestorPath, buildCategoryTree } from "../../utils/categoryTree";
+import { ListRowSkeletons } from "../../components/ListSkeleton";
 
 type Props = {
   /** Which box this is; `categories` holds only that kind. */
@@ -146,9 +147,9 @@ export default function CategoriesPanel({ kind, categories, loading, selectedId,
         </ListItemButton>
 
         {loading && (
-          <Stack alignItems="center" sx={{ py: 2 }}>
-            <CircularProgress size={18} />
-          </Stack>
+          <Box sx={{ pt: 1 }}>
+            <ListRowSkeletons count={7} lead={null} />
+          </Box>
         )}
 
         {!loading && tree.roots.map((root) => renderCategory(root, 0))}

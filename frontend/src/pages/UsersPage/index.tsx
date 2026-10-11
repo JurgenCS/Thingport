@@ -2,7 +2,6 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import Stack from "@mui/material/Stack";
 import Paper from "@mui/material/Paper";
-import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import Chip from "@mui/material/Chip";
 import Table from "@mui/material/Table";
@@ -14,6 +13,7 @@ import TableRow from "@mui/material/TableRow";
 import { UnauthorizedError } from "../../api/client";
 import { adminApi, type AdminUser } from "../../api/admin";
 import RegistrationsPanel from "./RegistrationsPanel";
+import { TableRowSkeletons } from "../../components/ListSkeleton";
 
 type Props = {
   onUnauthorized?: () => void;
@@ -58,27 +58,25 @@ export default function UsersPage({ onUnauthorized }: Props) {
         </Alert>
       )}
 
-      {loading ? (
-        <Stack alignItems="center" sx={{ py: 2 }}>
-          <CircularProgress size={20} />
-        </Stack>
-      ) : (
-        <Paper variant="outlined">
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>{t("adminSettings.users.columnEmail")}</TableCell>
-                  <TableCell>{t("adminSettings.users.columnCreated")}</TableCell>
-                  <TableCell>{t("adminSettings.users.columnDisplayName")}</TableCell>
-                  <TableCell>{t("adminSettings.users.columnRole")}</TableCell>
-                  <TableCell align="right">{t("adminSettings.users.columnModels")}</TableCell>
-                  <TableCell align="right">{t("adminSettings.users.columnCollections")}</TableCell>
-                  <TableCell>{t("adminSettings.users.columnMakerworld")}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {users.map((u) => (
+      <Paper variant="outlined">
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>{t("adminSettings.users.columnEmail")}</TableCell>
+                <TableCell>{t("adminSettings.users.columnCreated")}</TableCell>
+                <TableCell>{t("adminSettings.users.columnDisplayName")}</TableCell>
+                <TableCell>{t("adminSettings.users.columnRole")}</TableCell>
+                <TableCell align="right">{t("adminSettings.users.columnModels")}</TableCell>
+                <TableCell align="right">{t("adminSettings.users.columnCollections")}</TableCell>
+                <TableCell>{t("adminSettings.users.columnMakerworld")}</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                <TableRowSkeletons rows={5} columns={7} />
+              ) : (
+                users.map((u) => (
                   <TableRow key={u.id} hover>
                     <TableCell>{u.email}</TableCell>
                     <TableCell>{formatDate(u.created_at)}</TableCell>
@@ -108,12 +106,12 @@ export default function UsersPage({ onUnauthorized }: Props) {
                       />
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-      )}
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
     </Stack>
   );
 }

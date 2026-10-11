@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import CircularProgress from "@mui/material/CircularProgress";
 import Chip from "@mui/material/Chip";
 import Switch from "@mui/material/Switch";
 import FormControlLabel from "@mui/material/FormControlLabel";
@@ -13,6 +12,7 @@ import { UnauthorizedError } from "../../api/client";
 import { type TagSortMode, type TagSummary, tagsApi } from "../../api/tags";
 import { dividerBorderColor } from "../../theme";
 import TagSortTabs from "./TagSortTabs";
+import { ChipSkeletons } from "../../components/ListSkeleton";
 
 type Props = {
   onUnauthorized?: () => void;
@@ -81,14 +81,6 @@ export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) 
     }
   };
 
-  if (loading) {
-    return (
-      <Stack alignItems="center" sx={{ py: 8 }}>
-        <CircularProgress size={22} />
-      </Stack>
-    );
-  }
-
   return (
     <Stack spacing={2}>
       <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -105,7 +97,9 @@ export default function TagsPage({ onUnauthorized, onBookmarksChanged }: Props) 
         <TagSortTabs value={sortMode} onChange={setSortMode} />
       </Stack>
 
-      {visibleTags.length ? (
+      {loading ? (
+        <ChipSkeletons count={28} />
+      ) : visibleTags.length ? (
         <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
           {visibleTags.map((tag) => (
             <Chip

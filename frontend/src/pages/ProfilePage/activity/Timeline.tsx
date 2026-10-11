@@ -5,7 +5,6 @@ import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
-import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
@@ -21,6 +20,7 @@ import { UnauthorizedError } from "../../../api/client";
 import { activityApi, type ActivityItem, type ActivityKind, type ActivityMonth } from "../../../api/activity";
 import { printsApi } from "../../../api/prints";
 import { useInfiniteScroll } from "../../../hooks/useInfiniteScroll";
+import { ListRowSkeletons } from "../../../components/ListSkeleton";
 
 const KIND_ICONS: Record<ActivityKind, React.ReactNode> = {
   import: <CloudDownloadOutlinedIcon fontSize="small" />,
@@ -130,9 +130,10 @@ export default function Timeline({ startMonth, fromDay, onClearDay, onUnauthoriz
         </Alert>
       )}
       {loading && (
-        <Stack alignItems="center" sx={{ py: 2 }}>
-          <CircularProgress size={20} />
-        </Stack>
+        // A first load fills the space a month takes; a later one only hints at the next.
+        <Box sx={{ py: 1 }}>
+          <ListRowSkeletons count={months.length ? 2 : 4} lead="circle" leadSize={32} twoLines />
+        </Box>
       )}
       {next === null && months.length > 0 && (
         <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center", py: 2 }}>

@@ -1606,8 +1606,7 @@
       }
     },
     "grid": {
-      "empty": "No models yet.",
-      "loadingMore": "Loading…"
+      "empty": "No models yet."
     },
     "sort": {
       "newest": "Newest",

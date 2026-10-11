@@ -9,7 +9,6 @@ import Button from "@mui/material/Button";
 import ButtonBase from "@mui/material/ButtonBase";
 import IconButton from "@mui/material/IconButton";
 import Chip from "@mui/material/Chip";
-import CircularProgress from "@mui/material/CircularProgress";
 import ViewInArIcon from "@mui/icons-material/ViewInAr";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -29,6 +28,7 @@ import ModelActionsMenu from "./ModelActionsMenu";
 import FavoriteButton from "./FavoriteButton";
 import ModelSidePanel from "./ModelSidePanel";
 import MarkdownDescription from "../../components/MarkdownDescription";
+import Skeleton from "@mui/material/Skeleton";
 
 type Props = {
   theme: ResolvedTheme;
@@ -97,9 +97,39 @@ export default function ModelDetailPage({ theme, onSelectCategory, onUnauthorize
 
   if (loading) {
     return (
-      <Stack alignItems="center" sx={{ py: 8 }}>
-        <CircularProgress size={22} />
-      </Stack>
+      <Box sx={{ maxWidth: "1390px", mx: "auto" }} aria-hidden>
+        <Box
+          sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "2fr 1fr" }, gap: "24px", alignItems: "start" }}
+        >
+          <Box sx={{ minWidth: 0 }}>
+            <Skeleton
+              variant="rounded"
+              sx={{ width: "100%", height: "auto", aspectRatio: "16 / 10", borderRadius: "12px" }}
+            />
+            <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+              {[0, 1, 2, 3].map((index) => (
+                <Skeleton key={index} variant="rounded" width={84} height={63} />
+              ))}
+            </Stack>
+          </Box>
+          <Stack spacing={1.5}>
+            <Skeleton variant="text" sx={{ fontSize: "2rem", width: "85%" }} />
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <Skeleton variant="circular" width={28} height={28} />
+              <Skeleton variant="text" sx={{ width: "40%" }} />
+            </Stack>
+            <Stack direction="row" spacing={1}>
+              {[64, 80, 52].map((width) => (
+                <Skeleton key={width} variant="rounded" width={width} height={24} sx={{ borderRadius: 4 }} />
+              ))}
+            </Stack>
+            <Skeleton variant="rounded" height={40} />
+            {[90, 75, 82, 60].map((width) => (
+              <Skeleton key={width} variant="text" sx={{ width: `${width}%` }} />
+            ))}
+          </Stack>
+        </Box>
+      </Box>
     );
   }
 

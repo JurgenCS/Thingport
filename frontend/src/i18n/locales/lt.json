@@ -1633,8 +1633,7 @@
       }
     },
     "grid": {
-      "empty": "Kol kas nėra modelių.",
-      "loadingMore": "Įkeliama…"
+      "empty": "Kol kas nėra modelių."
     },
     "sort": {
       "newest": "Naujausi",

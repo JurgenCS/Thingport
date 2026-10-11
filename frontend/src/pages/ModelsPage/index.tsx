@@ -4,7 +4,6 @@ import { useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import CircularProgress from "@mui/material/CircularProgress";
 import { UnauthorizedError } from "../../api/client";
 import { type Print, type PrintSortMode, printsApi } from "../../api/prints";
 import { type Category, type CategoryKind, type CategoryMetaInput, categoriesApi } from "../../api/categories";
@@ -21,6 +20,8 @@ import CategoryBanner from "./CategoryBanner";
 import ModelCard from "./ModelCard";
 import SortTabs from "./SortTabs";
 import ModelsManagerDialog, { type ModelsManagerSection } from "./ModelsManagerDialog";
+import { CardSkeletons } from "../../components/media/CardSkeleton";
+import { cardGridSx } from "../../components/media/cardGrid";
 
 const PAGE_SIZE = 24;
 
@@ -295,24 +296,12 @@ export default function ModelsPage({
             </Box>
           )}
           {loading ? (
-            <Stack alignItems="center" sx={{ py: 8 }}>
-              <CircularProgress size={22} />
-            </Stack>
+            <Box sx={cardGridSx(5)}>
+              <CardSkeletons count={10} />
+            </Box>
           ) : items.length ? (
             <Stack spacing={2}>
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(5, 1fr)",
-                  columnGap: "20px",
-                  rowGap: "20px",
-                  "@media (max-width: 1979px)": { gridTemplateColumns: "repeat(5, 1fr)" },
-                  "@media (max-width: 1684px)": { gridTemplateColumns: "repeat(4, 1fr)" },
-                  "@media (max-width: 1404px)": { gridTemplateColumns: "repeat(3, 1fr)" },
-                  "@media (max-width: 1124px)": { gridTemplateColumns: "repeat(2, 1fr)" },
-                  "@media (max-width: 860px)": { gridTemplateColumns: "repeat(1, 1fr)" },
-                }}
-              >
+              <Box sx={cardGridSx(5)}>
                 {items.map((item) => (
                   <ModelCard
                     key={item.id}
@@ -328,17 +317,9 @@ export default function ModelsPage({
                     viewer={viewer}
                   />
                 ))}
+                {loadingMore && <CardSkeletons count={5} />}
               </Box>
-              {hasMore && (
-                <Stack ref={loadMoreSentinelRef} direction="row" justifyContent="center" sx={{ py: 1 }}>
-                  {loadingMore && (
-                    <Stack direction="row" alignItems="center" spacing={1} sx={{ color: "text.secondary" }}>
-                      <CircularProgress size={14} />
-                      <Typography variant="caption">{t("models:grid.loadingMore")}</Typography>
-                    </Stack>
-                  )}
-                </Stack>
-              )}
+              {hasMore && <Box ref={loadMoreSentinelRef} sx={{ height: 1 }} />}
             </Stack>
           ) : (
             <Stack alignItems="center" spacing={1} sx={{ py: 8, color: "text.secondary" }}>

@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import CircularProgress from "@mui/material/CircularProgress";
 import { UnauthorizedError } from "../../api/client";
 import { type Collection, type CollectionInput, collectionsApi } from "../../api/collections";
 import { type PreviewMode } from "../../api/settings";
@@ -12,6 +11,8 @@ import { usePageHeader } from "../../components/Layout/PageHeaderContext";
 import CollectionCard from "./CollectionCard";
 import CollectionFormModal from "./CollectionFormModal";
 import CollectionsActionsMenu from "./CollectionsActionsMenu";
+import { CardSkeletons } from "../../components/media/CardSkeleton";
+import { cardGridSx } from "../../components/media/cardGrid";
 
 type Props = {
   onUnauthorized?: () => void;
@@ -72,23 +73,11 @@ export default function CollectionsPage({ onUnauthorized, onBookmarksChanged, th
   return (
     <Stack spacing={2}>
       {loading ? (
-        <Stack alignItems="center" sx={{ py: 8 }}>
-          <CircularProgress size={22} />
-        </Stack>
+        <Box sx={cardGridSx(6)}>
+          <CardSkeletons count={12} variant="collection" />
+        </Box>
       ) : collections.length ? (
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: "repeat(6, 1fr)",
-            columnGap: "20px",
-            rowGap: "20px",
-            "@media (max-width: 1979px)": { gridTemplateColumns: "repeat(6, 1fr)" },
-            "@media (max-width: 1684px)": { gridTemplateColumns: "repeat(5, 1fr)" },
-            "@media (max-width: 1404px)": { gridTemplateColumns: "repeat(4, 1fr)" },
-            "@media (max-width: 1124px)": { gridTemplateColumns: "repeat(3, 1fr)" },
-            "@media (max-width: 860px)": { gridTemplateColumns: "repeat(2, 1fr)" },
-          }}
-        >
+        <Box sx={cardGridSx(6)}>
           {collections.map((collection) => (
             <CollectionCard
               key={collection.id}

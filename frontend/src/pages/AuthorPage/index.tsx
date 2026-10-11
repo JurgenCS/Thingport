@@ -7,7 +7,6 @@ import Typography from "@mui/material/Typography";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
-import CircularProgress from "@mui/material/CircularProgress";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PersonIcon from "@mui/icons-material/Person";
 import { UnauthorizedError } from "../../api/client";
@@ -25,6 +24,9 @@ import { importProviderInfo, printProviderInfo } from "../../constants/importPro
 import { authorProfileUrl } from "../../utils/authorProfileUrl";
 import { SELF_AUTHOR_ID } from "../../constants/selfAuthor";
 import ModelCard from "../ModelsPage/ModelCard";
+import Skeleton from "@mui/material/Skeleton";
+import { CardSkeletons } from "../../components/media/CardSkeleton";
+import { cardGridSx } from "../../components/media/cardGrid";
 
 const PAGE_SIZE = 24;
 const COVER_HEIGHT = 184;
@@ -176,9 +178,21 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
 
   if (loading) {
     return (
-      <Stack alignItems="center" sx={{ py: 8 }}>
-        <CircularProgress size={22} />
-      </Stack>
+      <Box
+        sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "320px 1fr" }, gap: "32px", pt: 3, pb: 3 }}
+        aria-hidden
+      >
+        <Stack spacing={1.5} alignItems={{ xs: "center", md: "flex-start" }}>
+          <Skeleton variant="circular" width={112} height={112} />
+          <Skeleton variant="text" sx={{ fontSize: "1.5rem", width: "60%" }} />
+          <Skeleton variant="text" sx={{ width: "40%" }} />
+          <Skeleton variant="text" sx={{ width: "90%" }} />
+          <Skeleton variant="text" sx={{ width: "80%" }} />
+        </Stack>
+        <Box sx={cardGridSx(5)}>
+          <CardSkeletons count={10} />
+        </Box>
+      </Box>
     );
   }
 
@@ -318,18 +332,7 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
             </Typography>
             {items.length ? (
               <Stack spacing={2}>
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(5, 1fr)",
-                    columnGap: "20px",
-                    rowGap: "20px",
-                    "@media (max-width: 1684px)": { gridTemplateColumns: "repeat(4, 1fr)" },
-                    "@media (max-width: 1404px)": { gridTemplateColumns: "repeat(3, 1fr)" },
-                    "@media (max-width: 1124px)": { gridTemplateColumns: "repeat(2, 1fr)" },
-                    "@media (max-width: 860px)": { gridTemplateColumns: "repeat(1, 1fr)" },
-                  }}
-                >
+                <Box sx={cardGridSx(5)}>
                   {items.map((item) => (
                     <ModelCard
                       key={item.id}
@@ -345,17 +348,9 @@ export default function AuthorPage({ theme, previewMode, onUnauthorized, viewer,
                       viewer={viewer}
                     />
                   ))}
+                  {loadingMore && <CardSkeletons count={5} />}
                 </Box>
-                {hasMore && (
-                  <Stack ref={loadMoreSentinelRef} direction="row" justifyContent="center" sx={{ py: 1 }}>
-                    {loadingMore && (
-                      <Stack direction="row" alignItems="center" spacing={1} sx={{ color: "text.secondary" }}>
-                        <CircularProgress size={14} />
-                        <Typography variant="caption">{t("models:grid.loadingMore")}</Typography>
-                      </Stack>
-                    )}
-                  </Stack>
-                )}
+                {hasMore && <Box ref={loadMoreSentinelRef} sx={{ height: 1 }} />}
               </Stack>
             ) : (
               <Typography variant="body2" color="text.secondary">

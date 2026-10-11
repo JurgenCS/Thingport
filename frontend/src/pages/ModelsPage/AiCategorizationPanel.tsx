@@ -23,6 +23,7 @@ import { UnauthorizedError } from "../../api/client";
 import { aiCategorizationApi, type AiRun, type AiRunCounts, type AiRunScope } from "../../api/aiCategorization";
 import type { Print } from "../../api/prints";
 import { useToast } from "../../components/ToastProvider";
+import { ListRowSkeletons } from "../../components/ListSkeleton";
 
 type Props = {
   onUnauthorized?: () => void;
@@ -276,7 +277,7 @@ export default function AiCategorizationPanel({ onUnauthorized, onPrintUpdated, 
       </Typography>
       <Box>
         {suggestionsLoading && !items.length ? (
-          <CircularProgress size={22} />
+          <ListRowSkeletons count={3} lead="rounded" leadSize={24} twoLines trailing />
         ) : items.length ? (
           <>
             <Stack direction="row" spacing={1} sx={{ mb: 1 }}>

@@ -17,6 +17,7 @@ import RecentlyAddedCard from "./RecentlyAddedCard";
 import ClockCard from "./ClockCard";
 import WeatherCard from "./WeatherCard";
 import FeaturedModelCard from "./FeaturedModelCard";
+import type { DashboardSkeleton } from "./DashboardCardSkeleton";
 
 type WidgetContext = {
   summary: DashboardSummary;
@@ -33,6 +34,9 @@ export type DashboardWidget = {
   column: 0 | 1 | 2;
   /** Shown until the user switches it off. An optional widget can start hidden instead. */
   defaultEnabled: boolean;
+  /** Its placeholder while the summary loads. A widget without one fetches its own data, renders
+   *  straight away, and mustn't read `summary`. */
+  skeleton?: DashboardSkeleton;
   render: (ctx: WidgetContext) => React.ReactNode;
 };
 
@@ -43,6 +47,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.collectionCount.label",
     column: 0,
     defaultEnabled: true,
+    skeleton: { kind: "count" },
     render: ({ summary, t, navigate }) => (
       <CountCard
         icon={<CollectionsIcon sx={{ fontSize: 32 }} />}
@@ -57,6 +62,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.modelCount.label",
     column: 0,
     defaultEnabled: true,
+    skeleton: { kind: "count" },
     render: ({ summary, t, navigate }) => (
       <CountCard
         icon={<ViewInArIcon sx={{ fontSize: 32 }} />}
@@ -71,6 +77,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.authorCount.label",
     column: 0,
     defaultEnabled: true,
+    skeleton: { kind: "count" },
     render: ({ summary, t }) => (
       <CountCard
         icon={<PersonIcon sx={{ fontSize: 32 }} />}
@@ -84,6 +91,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.categoryCount.label",
     column: 0,
     defaultEnabled: true,
+    skeleton: { kind: "count" },
     render: ({ summary, t, navigate }) => (
       <CountCard
         icon={<FolderIcon sx={{ fontSize: 32 }} />}
@@ -105,6 +113,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.topViewed.title",
     column: 1,
     defaultEnabled: true,
+    skeleton: { kind: "list", rows: 3, footer: true },
     render: ({ summary, t }) => (
       <ModelListCard
         icon={<VisibilityIcon />}
@@ -123,6 +132,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.topPrinted.title",
     column: 1,
     defaultEnabled: true,
+    skeleton: { kind: "list", rows: 3, footer: true },
     render: ({ summary, t }) => (
       <ModelListCard
         icon={<PrintIcon />}
@@ -141,6 +151,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.recentlyAdded.title",
     column: 1,
     defaultEnabled: true,
+    skeleton: { kind: "list", rows: 3 },
     render: ({ summary }) => <RecentlyAddedCard models={summary.recently_added} />,
   },
   // The clock, weather and featured model are optional extras, off until the user switches them on.
@@ -164,6 +175,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.topAuthors.title",
     column: 2,
     defaultEnabled: true,
+    skeleton: { kind: "list", rows: 5, footer: true },
     render: ({ summary }) => <AuthorListCard authors={summary.top_authors} />,
   },
   {
@@ -171,6 +183,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     labelKey: "dashboard.topProviders.title",
     column: 2,
     defaultEnabled: true,
+    skeleton: { kind: "list", rows: 4, avatar: false },
     render: ({ summary }) => <ProviderListCard providers={summary.top_providers} />,
   },
 ];

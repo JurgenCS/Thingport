@@ -1,15 +1,15 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import Box from "@mui/material/Box";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
 import List from "@mui/material/List";
-import Stack from "@mui/material/Stack";
-import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
+import { ListRowSkeletons } from "../../components/ListSkeleton";
 
 type Props<T> = {
   open: boolean;
@@ -44,9 +44,9 @@ export default function SeeMoreDialog<T>({ open, onClose, title, emptyText, fetc
         {error ? (
           <Alert severity="error">{error}</Alert>
         ) : items === null ? (
-          <Stack alignItems="center" sx={{ py: 3 }}>
-            <CircularProgress size={28} />
-          </Stack>
+          <Box sx={{ py: 1 }}>
+            <ListRowSkeletons count={6} trailing />
+          </Box>
         ) : items.length === 0 ? (
           <Typography color="text.secondary" sx={{ py: 2 }}>
             {emptyText}

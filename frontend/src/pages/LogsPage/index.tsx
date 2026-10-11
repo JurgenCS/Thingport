@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import Stack from "@mui/material/Stack";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
-import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import Chip from "@mui/material/Chip";
 import FormControl from "@mui/material/FormControl";
@@ -20,6 +19,7 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import { UnauthorizedError } from "../../api/client";
 import { adminApi, type AdminUser, type LogAction, type LogEntry } from "../../api/admin";
+import { TableRowSkeletons } from "../../components/ListSkeleton";
 
 type Props = {
   onUnauthorized?: () => void;
@@ -187,11 +187,7 @@ export default function LogsPage({ onUnauthorized }: Props) {
         </Alert>
       )}
 
-      {loading ? (
-        <Stack alignItems="center" sx={{ py: 2 }}>
-          <CircularProgress size={20} />
-        </Stack>
-      ) : logs.length === 0 ? (
+      {!loading && logs.length === 0 ? (
         <Paper variant="outlined" sx={{ p: 3 }}>
           <Typography variant="body2" color="text.secondary">
             {t("adminSettings.logs.empty")}
@@ -210,27 +206,31 @@ export default function LogsPage({ onUnauthorized }: Props) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {logs.map((log) => (
-                  <TableRow key={log.id} hover>
-                    <TableCell>{new Date(log.created_at).toLocaleString(i18n.language)}</TableCell>
-                    <TableCell>
-                      <Box>
-                        <Typography variant="body2">{log.user_display_name}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {log.user_email}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={t(`adminSettings.logs.action.${log.action}`)}
-                        size="small"
-                        color={ACTION_COLORS[log.action] ?? "default"}
-                      />
-                    </TableCell>
-                    <TableCell>{formatDetails(log)}</TableCell>
-                  </TableRow>
-                ))}
+                {loading ? (
+                  <TableRowSkeletons rows={8} columns={4} />
+                ) : (
+                  logs.map((log) => (
+                    <TableRow key={log.id} hover>
+                      <TableCell>{new Date(log.created_at).toLocaleString(i18n.language)}</TableCell>
+                      <TableCell>
+                        <Box>
+                          <Typography variant="body2">{log.user_display_name}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {log.user_email}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={t(`adminSettings.logs.action.${log.action}`)}
+                          size="small"
+                          color={ACTION_COLORS[log.action] ?? "default"}
+                        />
+                      </TableCell>
+                      <TableCell>{formatDetails(log)}</TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </TableContainer>

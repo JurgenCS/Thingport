@@ -18,6 +18,7 @@ import { useDashboardLayout } from "../../hooks/useDashboardLayout";
 import DashboardCustomizeDialog from "./DashboardCustomizeDialog";
 import { DASHBOARD_WIDGETS, isWidgetEnabled, type DashboardWidget } from "./widgets";
 import { PUZZLE_COLUMNS, layoutDefinition, panelColumns, puzzlePieces } from "./layouts";
+import DashboardCardSkeleton from "./DashboardCardSkeleton";
 
 // Beside the panels, the count column is narrower than each panel column.
 const COUNTS_FLEX = 1;
@@ -70,7 +71,7 @@ export default function DashboardPage({ onUnauthorized }: Props) {
         {error}
       </Alert>
     );
-  } else if (!summary || !choices || !layout) {
+  } else if (!choices || !layout) {
     content = (
       <Stack alignItems="center" justifyContent="center" sx={{ py: 10 }}>
         <CircularProgress />
@@ -87,8 +88,15 @@ export default function DashboardPage({ onUnauthorized }: Props) {
     );
     const sideways = definition.counts === "left" || definition.counts === "right";
     const countsFirst = definition.counts === "left" || definition.counts === "top";
+    // Until the summary arrives, widgets that need it show their placeholder; the rest render already.
+    const widgetContent = (widget: DashboardWidget) =>
+      !summary && widget.skeleton ? (
+        <DashboardCardSkeleton skeleton={widget.skeleton} />
+      ) : (
+        widget.render({ summary: summary as DashboardSummary, t, navigate, onUnauthorized })
+      );
     const renderWidget = (widget: DashboardWidget) => (
-      <React.Fragment key={widget.id}>{widget.render({ summary, t, navigate, onUnauthorized })}</React.Fragment>
+      <React.Fragment key={widget.id}>{widgetContent(widget)}</React.Fragment>
     );
 
     const countsBlock = counts.length ? (
@@ -153,7 +161,7 @@ export default function DashboardPage({ onUnauthorized }: Props) {
                 "& > *": { flex: 1 },
               }}
             >
-              {item.render({ summary, t, navigate, onUnauthorized })}
+              {widgetContent(item)}
             </Box>
           ))}
         </Box>

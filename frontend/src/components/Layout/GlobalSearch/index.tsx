@@ -44,6 +44,7 @@ import { bestScore, minScoreFor } from "./match";
 import { matchSystemCollections } from "./systemCollections";
 import { matchPages, SEARCH_PAGES, type PageId, type SearchPage } from "./pages";
 import { addRecent, readRecents, RECENTS_SHOWN, type RecentEntry, type RecentKind } from "./recents";
+import { ListRowSkeletons } from "../../ListSkeleton";
 
 const MIN_QUERY_LENGTH = 2;
 const DEBOUNCE_MS = 250;
@@ -726,9 +727,12 @@ export default function GlobalSearch({
                 </Box>
               ))}
               {searching && (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, px: 1.25, py: 1.5, color: "text.secondary" }}>
-                  <CircularProgress size={12} color="inherit" />
-                  <Typography variant="body2">{t("app:search.searching")}</Typography>
+                <Box
+                  component="output"
+                  sx={{ display: "block", py: 1 }}
+                  aria-label={t("app:search.searching") ?? undefined}
+                >
+                  <ListRowSkeletons count={3} lead="rounded" leadSize={20} />
                 </Box>
               )}
               {emptyText && (

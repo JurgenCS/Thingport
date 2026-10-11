@@ -4,7 +4,6 @@ import { useParams, useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import CircularProgress from "@mui/material/CircularProgress";
 import { UnauthorizedError } from "../../api/client";
 import { type Print, type PrintSortMode, printsApi } from "../../api/prints";
 import { type Collection, collectionsApi } from "../../api/collections";
@@ -19,6 +18,8 @@ import SortTabs from "../ModelsPage/SortTabs";
 import CollectionCard from "../CollectionsPage/CollectionCard";
 import TagBookmarkButton from "./TagBookmarkButton";
 import TagActionsMenu from "./TagActionsMenu";
+import { CardSkeletons } from "../../components/media/CardSkeleton";
+import { cardGridSx } from "../../components/media/cardGrid";
 
 const PAGE_SIZE = 24;
 
@@ -163,9 +164,11 @@ export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBo
 
   if (loading) {
     return (
-      <Stack alignItems="center" sx={{ py: 8 }}>
-        <CircularProgress size={22} />
-      </Stack>
+      <Box sx={{ maxWidth: "1920px", mx: "auto", pt: 7 }}>
+        <Box sx={cardGridSx(6)}>
+          <CardSkeletons count={12} />
+        </Box>
+      </Box>
     );
   }
 
@@ -176,19 +179,7 @@ export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBo
       </Box>
       {collections.length || items.length ? (
         <Stack spacing={2}>
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "repeat(6, 1fr)",
-              columnGap: "20px",
-              rowGap: "20px",
-              "@media (max-width: 1979px)": { gridTemplateColumns: "repeat(6, 1fr)" },
-              "@media (max-width: 1684px)": { gridTemplateColumns: "repeat(5, 1fr)" },
-              "@media (max-width: 1404px)": { gridTemplateColumns: "repeat(4, 1fr)" },
-              "@media (max-width: 1124px)": { gridTemplateColumns: "repeat(3, 1fr)" },
-              "@media (max-width: 860px)": { gridTemplateColumns: "repeat(2, 1fr)" },
-            }}
-          >
+          <Box sx={cardGridSx(6)}>
             {collections.map((collection) => (
               <CollectionCard
                 key={collection.id}
@@ -214,17 +205,9 @@ export default function TagDetailPage({ theme, previewMode, onUnauthorized, onBo
                 viewer={viewer}
               />
             ))}
+            {loadingMore && <CardSkeletons count={6} />}
           </Box>
-          {hasMore && (
-            <Stack ref={loadMoreSentinelRef} direction="row" justifyContent="center" sx={{ py: 1 }}>
-              {loadingMore && (
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ color: "text.secondary" }}>
-                  <CircularProgress size={14} />
-                  <Typography variant="caption">{t("models:grid.loadingMore")}</Typography>
-                </Stack>
-              )}
-            </Stack>
-          )}
+          {hasMore && <Box ref={loadMoreSentinelRef} sx={{ height: 1 }} />}
         </Stack>
       ) : (
         <Stack alignItems="center" spacing={1} sx={{ py: 8, color: "text.secondary" }}>
