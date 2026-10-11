@@ -91,6 +91,14 @@ const SHOTS = [
     name: "01_dashboard",
     run: async (page) => {
       await page.goto("/");
+      await settle(page, 0);
+      // The weather card names the account's saved location; blur it.
+      await page.evaluate(() => {
+        for (const button of document.querySelectorAll('button[aria-label="Change location"]')) {
+          const name = button.previousElementSibling;
+          if (name instanceof HTMLElement) name.style.filter = "blur(5px)";
+        }
+      });
     },
   },
   {
