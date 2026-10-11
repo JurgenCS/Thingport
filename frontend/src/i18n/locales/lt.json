@@ -594,6 +594,7 @@
           "heading": "DI prijungimas",
           "subtitle": "Su OpenAI suderinama paslauga, kurią naudoja Thingport DI funkcijos.",
           "baseUrl": "API bazinis URL",
+          "baseUrlHint": "pvz., http://localhost:11434 Ollama atveju. Jei URL neturi kelio, pridedamas /v1.",
           "model": "Modelio pavadinimas",
           "apiKey": "API raktas",
           "keySet": "Raktas išsaugotas. Įveskite naują, kad jį pakeistumėte.",

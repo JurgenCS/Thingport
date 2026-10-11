@@ -222,12 +222,24 @@ export const DEFAULT_AI_CATEGORIZATION_SETTINGS: AiCategorizationSettings = {
   timeoutMs: 60000,
 };
 
+/** Ollama, LM Studio, vLLM and OpenAI serve the API under /v1, so a bare origin gets it added. Any other path is
+ * kept, for providers like OpenRouter (/api/v1) or Gemini (/v1beta/openai). */
+export function normalizeAiBaseUrl(value: string | null | undefined): string | null {
+  const trimmed = (value ?? "").trim().replace(/\/+$/, "");
+  if (!trimmed) return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.pathname === "/" && !url.search && !url.hash) return `${trimmed}/v1`;
+  } catch {}
+  return trimmed;
+}
+
 function validAiSettings(value: unknown): Partial<AiCategorizationSettings> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const raw = value as Record<string, unknown>;
   return {
     ...(raw.mode === "off" || raw.mode === "suggest" || raw.mode === "auto" ? { mode: raw.mode } : {}),
-    ...(typeof raw.baseUrl === "string" || raw.baseUrl === null ? { baseUrl: raw.baseUrl?.trim() || null } : {}),
+    ...(typeof raw.baseUrl === "string" || raw.baseUrl === null ? { baseUrl: normalizeAiBaseUrl(raw.baseUrl) } : {}),
     ...(typeof raw.apiKey === "string" || raw.apiKey === null ? { apiKey: raw.apiKey?.trim() || null } : {}),
     ...(typeof raw.model === "string" || raw.model === null ? { model: raw.model?.trim() || null } : {}),
     ...(typeof raw.threshold === "number" && raw.threshold >= 0 && raw.threshold <= 1

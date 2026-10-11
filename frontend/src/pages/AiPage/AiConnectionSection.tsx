@@ -128,6 +128,7 @@ export default function AiConnectionSection({ onUnauthorized }: Props) {
             label={t("adminSettings.ai.connection.baseUrl")}
             value={draft.base_url}
             onChange={(event) => update("base_url", event.target.value)}
+            helperText={t("adminSettings.ai.connection.baseUrlHint")}
             disabled={busy}
             fullWidth
           />

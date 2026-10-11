@@ -12,6 +12,7 @@ import {
   getSimplifyPreviews,
   getSmtpSettings,
   getFlaresolverrUrl,
+  normalizeAiBaseUrl,
   setFlaresolverrUrl,
   getThingiverseAccessToken,
   setAllowRegistrations,
@@ -608,7 +609,7 @@ router.patch(
   asyncHandler(async (req, res) => {
     const body = parseBody(aiCategorizationSettingsSchema, req.body);
     const connection = {
-      ...(body.base_url !== undefined ? { baseUrl: body.base_url?.replace(/\/+$/, "") || null } : {}),
+      ...(body.base_url !== undefined ? { baseUrl: normalizeAiBaseUrl(body.base_url) } : {}),
       ...(body.api_key !== undefined ? { apiKey: body.api_key } : {}),
       ...(body.model !== undefined ? { model: body.model || null } : {}),
       ...(body.timeout_ms !== undefined ? { timeoutMs: body.timeout_ms } : {}),
@@ -649,7 +650,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const body = parseBody(aiCategorizationTestSchema, req.body ?? {});
     const result = await testAiCategorizationProvider({
-      ...(body.base_url !== undefined ? { baseUrl: body.base_url.replace(/\/+$/, "") } : {}),
+      ...(body.base_url !== undefined ? { baseUrl: normalizeAiBaseUrl(body.base_url) } : {}),
       ...(body.model !== undefined ? { model: body.model } : {}),
       ...(body.api_key !== undefined ? { apiKey: body.api_key || null } : {}),
       ...(body.timeout_ms !== undefined ? { timeoutMs: body.timeout_ms } : {}),

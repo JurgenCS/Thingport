@@ -272,10 +272,11 @@ describe("AI categorization", () => {
       .set(auth())
       .send({ base_url: liveUrl, model: "local-model" });
     expect(draft.body).toMatchObject({ ok: true, model: "local-model" });
+    // A bare origin gets /v1 added, as Ollama and most local servers need.
     const saved = await request(app)
       .patch("/api/settings/ai-categorization")
       .set(auth())
-      .send({ base_url: liveUrl, model: "local-model" });
+      .send({ base_url: liveUrl.replace(/\/v1$/, "/"), model: "local-model" });
     expect(saved.status).toBe(200);
     expect(saved.body.base_url).toBe(liveUrl);
 
