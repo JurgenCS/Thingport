@@ -326,6 +326,7 @@ describe("AI categorization", () => {
     const timeout = await request(app).post(`/api/print/${timedOut.id}/recategorize`).set(auth()).send({});
     expect(timeout.status).toBe(502);
     expect(timeout.body.code).toBe("ai_failed");
+    expect(timeout.body.error).toBe("AI provider failed: The AI provider did not answer within 0 s");
     expect(providerRequests).toBe(3);
 
     await stopProvider();
@@ -344,6 +345,7 @@ describe("AI categorization", () => {
     const notRetried = await request(app).post(`/api/print/${badRequest.id}/recategorize`).set(auth()).send({});
     expect(notRetried.status).toBe(502);
     expect(notRetried.body.code).toBe("ai_failed");
+    expect(notRetried.body.error).toBe("AI provider failed: AI provider returned HTTP 400");
     expect(providerRequests).toBe(1);
     expect(target.id).toBeTruthy();
   });

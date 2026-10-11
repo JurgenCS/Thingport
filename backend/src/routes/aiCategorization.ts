@@ -39,9 +39,12 @@ function runOut(run: AiCategorizationRun | null) {
   };
 }
 
+// Provider errors already have the API key redacted, so the reason is safe to pass on.
 function aiFailure(error: unknown): never {
   if (error instanceof HttpError) throw error;
-  throw new HttpError(502, "AI provider failed", "ai_failed");
+  const reason = error instanceof Error ? error.message : String(error);
+  console.warn("AI categorization failed:", reason);
+  throw new HttpError(502, `AI provider failed: ${reason}`, "ai_failed");
 }
 
 router.get(
