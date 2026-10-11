@@ -48,5 +48,11 @@ export async function readErrorMessage(res: Response, fallback: string) {
       return data.detail.trim();
     }
   } catch {}
+  // An HTML page comes from a proxy in front of the backend, not from Thingport.
+  if (/^<(!doctype|html)/i.test(trimmed)) {
+    if (res.status === 504)
+      return "The server took too long to answer, and a proxy in front of Thingport gave up (HTTP 504).";
+    return `${fallback} (HTTP ${res.status})`;
+  }
   return trimmed;
 }
