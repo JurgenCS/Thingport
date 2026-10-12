@@ -105,6 +105,8 @@ Use a separate Compose project, database and storage paths; never point the base
 from an existing installation. Pass `GIT_SHA=$(git rev-parse HEAD)` as a build argument to both
 images and record any uncommitted code changes alongside that SHA. Do not substitute upstream
 `latest` images when validating fork changes.
+The backend Docker context excludes host dependencies, local secrets and runtime storage through
+`backend/.dockerignore`; each Docker stage installs its own Linux dependencies from the lockfile.
 
 The existing nginx configuration resolves `backend` when nginx starts. After recreating the
 backend container (and changing its IP), restart the frontend proxy as well; otherwise it can
