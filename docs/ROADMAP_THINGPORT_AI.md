@@ -45,7 +45,7 @@ Realizzare una libreria personale intelligente di progetti e reference 3D, parte
 - Nuovi file sorgente solo quando esiste una responsabilità distinta e riutilizzabile: preferire estendere moduli coerenti con quelli esistenti senza creare file monolitici.
 - Prima di proporre un file nuovo cercare responsabilità equivalente nel codice upstream e scrivere nella fase: **perché questo file serve**. Non duplicare sistemi di job, servizi HTTP, DTO, config, moduli AI o componenti di ricerca.
 - Evitare sia l'esplosione in microfile sia il grande `aiService.ts` con tutto dentro: organizzare per confini effettivi già adottati da upstream. Non imporre un numero arbitrario di file, ma segnalare ogni file nuovo a fine fase.
-- Tenere README e documentazione originale dove sono. Aggiornare istruzioni pertinenti *in situ*; questo file è l'unica fonte per roadmap, audit, decisioni e avanzamento.
+- Tenere README e documentazione originale dove sono. Aggiornare istruzioni pertinenti _in situ_; questo file è l'unica fonte per roadmap, audit, decisioni e avanzamento.
 - Test accanto alla funzionalità, aderendo alle convenzioni del progetto. Riutilizzare fixture e utility esistenti; niente test duplicati per lo stesso comportamento.
 - Nessun report di test o snapshot generato deve essere committato se è un artefatto di esecuzione; usare output CI o cartelle ignorate.
 - Ogni dipendenza nuova deve avere motivazione nel riepilogo della fase; nessuna dipendenza solo per evitare 20 righe di codice chiaro.
@@ -75,7 +75,7 @@ nostro-fork/develop             (Thingport + nostre funzionalità)
 
 - `upstream` è il remote del progetto originale; `origin` è il fork dell'utente. Non assumere che siano già configurati: **verificare con `git remote -v`**.
 - `main` del fork contiene esclusivamente commit dell'upstream, salvi eventuali interventi deliberati per mantenere il mirror. **Non mettere roadmap, nuove feature, migration o documentazione proprietaria in `main`.**
-- `develop` è il ramo di integrazione del prodotto personalizzato, da cui buildare e distribuire il fork. Partire da `main`, quindi creare `develop` *soltanto se non esiste*, senza alterare un ramo di lavoro o modifiche locali preesistenti.
+- `develop` è il ramo di integrazione del prodotto personalizzato, da cui buildare e distribuire il fork. Partire da `main`, quindi creare `develop` _soltanto se non esiste_, senza alterare un ramo di lavoro o modifiche locali preesistenti.
 - Le modifiche applicative passano in rami `feat/*` o `fix/*` derivati da `develop`; integrare con PR o merge controllato dopo i gate. Per un singolo sviluppatore si può mantenere la procedura leggera, ma **non modificare direttamente `main`**.
 - In caso di disallineamento del fork rispetto allo schema, **non eseguire reset/force push** per imporlo. Segnalare il problema e proporre la migrazione più sicura, richiedendo autorizzazione per operazioni remote.
 - Nomi dei rami, workflow CI e branch predefinito effettivi si verificano durante audit; usare questi nomi come target e non come fatto già compiuto.
@@ -96,7 +96,7 @@ git status --short --branch
 git remote -v
 git fetch upstream --prune
 git log --oneline --left-right develop...upstream/main
-# Differenza dei commit propri dal mirror: 
+# Differenza dei commit propri dal mirror:
 git log --oneline main..develop
 # Superficie dei cambiamenti propri:
 git diff --stat main...develop
@@ -109,14 +109,14 @@ Dopo un aggiornamento autorizzato, i passi concettuali sono `main` fast-forward 
 
 Prima di implementare una feature, il piano deve indicare:
 
-| Domanda | Risposta richiesta |
-|---|---|
-| Si può ottenere con codice upstream già presente? | Percorso/simbolo e motivo del sì/no |
-| Possiamo aggiungere una feature senza cambiare i contratti centrali? | Sì/no e trade-off |
-| Quali file upstream vanno toccati? | Elenco ristretto e motivazione |
-| Servono migrazioni di dati? | Impatto, reversibilità, isolamento in test |
-| Cosa succede quando upstream cambia quel modulo? | Strategia di merge/verifica concreta |
-| È una correzione utile anche a upstream? | Valutazione per possibile PR, senza inviarla automaticamente |
+| Domanda                                                              | Risposta richiesta                                           |
+| -------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Si può ottenere con codice upstream già presente?                    | Percorso/simbolo e motivo del sì/no                          |
+| Possiamo aggiungere una feature senza cambiare i contratti centrali? | Sì/no e trade-off                                            |
+| Quali file upstream vanno toccati?                                   | Elenco ristretto e motivazione                               |
+| Servono migrazioni di dati?                                          | Impatto, reversibilità, isolamento in test                   |
+| Cosa succede quando upstream cambia quel modulo?                     | Strategia di merge/verifica concreta                         |
+| È una correzione utile anche a upstream?                             | Valutazione per possibile PR, senza inviarla automaticamente |
 
 Preferire integrazione adiacente a moduli originali, feature flag/config opzionali, migrazioni additive, API retrocompatibili e rollback possibile. Evitare grandi refactor di formato, rinomine massive, fork interni di componenti, vendor copy e cambiamenti cosmetici che rendano i diff illeggibili.
 
@@ -424,16 +424,16 @@ npm --prefix extension run verify
 
 ### Matrice di regressione
 
-| Area | Casi che devono sempre rimanere funzionanti |
-|---|---|
-| Ingestione | Import singolo, collezione, retry, dedup, stampa/profili e file |
-| Sincronizzazione | Incrementale, no delete, provider offline, autenticazione scaduta |
-| Catalogo | Modifica manuale, categorie/cartelle, tag, collections, autore |
-| Classificazione | Suggest-only, reject, override manuale, invalid JSON, reprocess |
-| Ricerca | Lessicale, semantica, ibrida, sinonimi, filtro, utenti separati |
-| File | File presenti, preview, download, import incompleto, storage offline |
-| Resilienza | Restart durante job, idempotenza, dati obsoleti, restore |
-| Estensione | Browser supportati, background worker, permessi, nessun secret nel log |
+| Area                   | Casi che devono sempre rimanere funzionanti                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------- |
+| Ingestione             | Import singolo, collezione, retry, dedup, stampa/profili e file                             |
+| Sincronizzazione       | Incrementale, no delete, provider offline, autenticazione scaduta                           |
+| Catalogo               | Modifica manuale, categorie/cartelle, tag, collections, autore                              |
+| Classificazione        | Suggest-only, reject, override manuale, invalid JSON, reprocess                             |
+| Ricerca                | Lessicale, semantica, ibrida, sinonimi, filtro, utenti separati                             |
+| File                   | File presenti, preview, download, import incompleto, storage offline                        |
+| Resilienza             | Restart durante job, idempotenza, dati obsoleti, restore                                    |
+| Estensione             | Browser supportati, background worker, permessi, nessun secret nel log                      |
 | Compatibilità upstream | Diff contenuto, merge in ramo di prova, suite dopo merge, compatibilità migration/extension |
 
 ### Regole sui test
@@ -477,38 +477,38 @@ npm --prefix extension run verify
 
 ## Audit tecnico (compilare nella FASE 0)
 
-| Funzione | Esito: esiste/parziale/manca | Percorso codice | Delta minimo |
-|---|---|---|---|
-| Import MakerWorld | Da verificare nel checkout | — | — |
-| Extension Grab | Da verificare nel checkout | — | — |
-| Collection sync | Da verificare nel checkout | — | — |
-| Conservazione file | Da verificare nel checkout | — | — |
-| Categorie/collection/tag | Da verificare nel checkout | — | — |
-| Classificazione AI esistente | Da verificare nel checkout | — | — |
-| Correzioni/rifiuti | Da verificare nel checkout | — | — |
-| Ricerca full-text | Da verificare nel checkout | — | — |
-| Test backend/frontend/extension | Da verificare nel checkout | — | — |
-| Regressione Playwright | Da verificare nel checkout | — | — |
+| Funzione                        | Esito: esiste/parziale/manca | Percorso codice | Delta minimo |
+| ------------------------------- | ---------------------------- | --------------- | ------------ |
+| Import MakerWorld               | Da verificare nel checkout   | —               | —            |
+| Extension Grab                  | Da verificare nel checkout   | —               | —            |
+| Collection sync                 | Da verificare nel checkout   | —               | —            |
+| Conservazione file              | Da verificare nel checkout   | —               | —            |
+| Categorie/collection/tag        | Da verificare nel checkout   | —               | —            |
+| Classificazione AI esistente    | Da verificare nel checkout   | —               | —            |
+| Correzioni/rifiuti              | Da verificare nel checkout   | —               | —            |
+| Ricerca full-text               | Da verificare nel checkout   | —               | —            |
+| Test backend/frontend/extension | Da verificare nel checkout   | —               | —            |
+| Regressione Playwright          | Da verificare nel checkout   | —               | —            |
 
 ## Ricognizione fork (compilare nella FASE 0)
 
-| Fork e SHA | Delta rispetto a upstream | Aspetto utile e test | Integrazione / riferimento / ignorare | Verificabilità |
-|---|---|---|---|---|
-| Da enumerare, nessuna conclusione precompilata | — | — | — | NON VERIFICATO |
+| Fork e SHA                                     | Delta rispetto a upstream | Aspetto utile e test | Integrazione / riferimento / ignorare | Verificabilità |
+| ---------------------------------------------- | ------------------------- | -------------------- | ------------------------------------- | -------------- |
+| Da enumerare, nessuna conclusione precompilata | —                         | —                    | —                                     | NON VERIFICATO |
 
 **Nota:** una descrizione su GitHub o un numero di commit non è prova di funzionalità realmente sviluppate nel fork. Non precompilare risultati sulla base di congetture o analisi precedenti non riproducibili.
 
 ## Compatibilità upstream (compilare e mantenere)
 
-| Voce | Stato |
-|---|---|
-| SHA e data base upstream | Da verificare |
-| Origin del fork / upstream remote | Da verificare |
-| Stato `main` mirror | Da verificare |
-| Stato `develop` e divergenza | Da verificare |
-| Moduli upstream a rischio conflitto | Da verificare |
-| Prossimo aggiornamento upstream: test richiesti | Da verificare |
-| Feature del fork candidabili a PR upstream | Nessuna prima dell'implementazione |
+| Voce                                            | Stato                              |
+| ----------------------------------------------- | ---------------------------------- |
+| SHA e data base upstream                        | Da verificare                      |
+| Origin del fork / upstream remote               | Da verificare                      |
+| Stato `main` mirror                             | Da verificare                      |
+| Stato `develop` e divergenza                    | Da verificare                      |
+| Moduli upstream a rischio conflitto             | Da verificare                      |
+| Prossimo aggiornamento upstream: test richiesti | Da verificare                      |
+| Feature del fork candidabili a PR upstream      | Nessuna prima dell'implementazione |
 
 ## Registro avanzamento (aggiornare qui, NON generare file di diario)
 
@@ -527,7 +527,7 @@ npm --prefix extension run verify
 >
 > Leggi **integralmente** `docs/AI_ROADMAP.md` — incluse le sezioni 0A, 0B, 0C — poi `README.md`, `CONTRIBUTING.md`, `docs/DEVELOPMENT.md` e la documentazione dell'estensione se presenti. Verifica lo stato corrente del checkout prima di agire: `git status`, branch, commit SHA, `git remote -v` e differenze da upstream; verifica invece di presumere nomi di branch, percorsi o file.
 >
-> **Questa esecuzione è limitata alla FASE 0.** Esegui una ricognizione tecnica *in sola lettura* dell'architettura reale, schema Prisma, AI eventualmente già esistente, search, import/sync MakerWorld, storage, extension, test e deployment. Identifica il delta minimo che ci separa dal prodotto desiderato. Esamina i fork pubblici via GitHub CLI/API se accessibile e riporta soltanto differenze documentate da commit e codice; se l'accesso è impossibile, segnalo come NON VERIFICATO e prosegui sull'audit del repository.
+> **Questa esecuzione è limitata alla FASE 0.** Esegui una ricognizione tecnica _in sola lettura_ dell'architettura reale, schema Prisma, AI eventualmente già esistente, search, import/sync MakerWorld, storage, extension, test e deployment. Identifica il delta minimo che ci separa dal prodotto desiderato. Esamina i fork pubblici via GitHub CLI/API se accessibile e riporta soltanto differenze documentate da commit e codice; se l'accesso è impossibile, segnalo come NON VERIFICATO e prosegui sull'audit del repository.
 >
 > Proponi esplicitamente come mantenere `main` quale mirror di upstream e `develop` quale ramo delle nostre funzionalità, adattandoti allo stato reale del fork senza operazioni distruttive. Identifica aree di conflitto, miglioramenti genericamente proponibili upstream e modalità di test/merge sicuro.
 >
