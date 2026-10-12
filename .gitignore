@@ -39,3 +39,5 @@ regression/.auth/
 regression/test-results/
 regression/playwright-report/
 regression/consume/
+
+.agent_private/
