@@ -50,7 +50,17 @@ async function fetchListing(sync: SyncWithCollection): Promise<string[] | null> 
     // A public collection lists without a login; a private one needs the owner's.
     const bearer = extractMakerworldBearerToken(await getUserMakerworldCookie(sync.userId));
     if (!(await checkMakerworldCollection(id, bearer, IMPORT_MAKERWORLD_CALL_DELAY_MS))) return null;
-    const { entries } = await fetchMakerworldCollectionEntries(id, bearer, undefined, IMPORT_MAKERWORLD_CALL_DELAY_MS);
+    const { entries, truncated } = await fetchMakerworldCollectionEntries(
+      id,
+      bearer,
+      undefined,
+      IMPORT_MAKERWORLD_CALL_DELAY_MS,
+    );
+    if (truncated) {
+      throw new Error(
+        `MakerWorld collection listing is incomplete (limit: ${entries.length} models). Use a smaller collection or import manually.`,
+      );
+    }
     return entries.map((e) => e.designId);
   }
   if (sync.provider === "printables") {

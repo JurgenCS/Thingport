@@ -20,6 +20,9 @@ import { createApp } from "../src/app";
 import { prisma } from "../src/db";
 import { releaseSync, reserveSync, runManualSync, syncCollection } from "../src/services/collectionSyncRunner";
 import { SYNC_JOB_INTERRUPTED } from "../src/services/importJobRunner";
+import { fetchMakerworldCollectionEntries } from "../src/services/makerworldCollections";
+import { startLinksJob } from "../src/services/importQueueService";
+import { IMPORT_MAX_BYTES } from "../src/config";
 import { isSyncDue, markSchedulerStarted, nextSyncAt } from "../src/services/collectionSyncSchedule";
 import { setThingiverseAccessToken } from "../src/services/settingsService";
 import { checkPrintablesCollection } from "../src/services/printablesApi";
@@ -63,6 +66,7 @@ function design(designId: string) {
 const collections = new Map<string, string[] | "gone">();
 /** Designs whose download hits MakerWorld's daily limit. */
 const limited = new Set<string>();
+const downloads = new Map<string, "oversize" | "interrupted" | "unavailable">();
 
 function mockFetch() {
   global.fetch = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async (input) => {
@@ -92,6 +96,24 @@ function mockFetch() {
     }
     const file = url.match(/^https:\/\/s3\.example\.com\/phoenix-(\d+)\.stl$/);
     if (file) {
+      const problem = downloads.get(file[1].slice(1));
+      if (problem === "unavailable") return new Response("unavailable", { status: 503 });
+      if (problem === "oversize")
+        return new Response("", { headers: { "content-length": String(IMPORT_MAX_BYTES + 1) } });
+      if (problem === "interrupted") {
+        let started = false;
+        return new Response(
+          new ReadableStream({
+            pull(controller) {
+              if (started) controller.error(new TypeError("download interrupted"));
+              else {
+                started = true;
+                controller.enqueue(new TextEncoder().encode("solid partial\n"));
+              }
+            },
+          }),
+        );
+      }
       return new Response(`solid phoenix-${file[1]}\nendsolid\n`, {
         headers: { "content-type": "application/octet-stream" },
       });
@@ -138,6 +160,7 @@ describe("synced collections", () => {
     global.fetch = originalFetch;
     mockFetch();
     limited.clear();
+    downloads.clear();
     // A finished job mustn't hold the one-running-import lock for the next test.
     await prisma.importJob.updateMany({ where: { userId, status: "RUNNING" }, data: { status: "DONE" } });
   });
@@ -507,6 +530,9 @@ describe("synced collections", () => {
     const cid = newId();
     const owned = newId();
     const printId = await importDirectly(owned);
+    const other = await findOrCreateCollectionByName(userId, `Other ${cid}`);
+    await prisma.collectionItem.create({ data: { collectionId: other.id, printId, position: 0 } });
+    const platesBefore = await prisma.plate.findMany({ where: { printId } });
     collections.set(cid, [owned]);
     const enabled = await enable({ url: collectionUrl(cid), title: `Flock ${cid}`, known_ids: [] });
 
@@ -515,7 +541,139 @@ describe("synced collections", () => {
       await prisma.collectionItem.findFirst({ where: { collectionId: enabled.body.collection_id, printId } }),
     ).not.toBeNull();
     expect((await latestNotification()).title).toBe(`1 model added to "Flock ${cid}"`);
+    expect(await syncCollection((await syncOf(enabled.body.collection_id)).id)).toBe("unchanged");
+    expect(await prisma.print.count({ where: { userId, sourceProvider: "makerworld", sourceExternalId: owned } })).toBe(
+      1,
+    );
+    expect(await prisma.collectionItem.count({ where: { printId } })).toBe(2);
+    expect(await prisma.plate.findMany({ where: { printId } })).toEqual(platesBefore);
   });
+
+  it("serves an imported file after its source disappears, without reaching the provider", async () => {
+    const id = newId();
+    const printId = await importDirectly(id);
+    const plate = await prisma.plate.findFirstOrThrow({ where: { printId } });
+    global.fetch = vi.fn<typeof fetch>(async () => {
+      throw new TypeError("provider offline");
+    });
+    const response = await request(app)
+      .get(`/api/print/${printId}/plate/${plate.id}/file/${encodeURIComponent(plate.filename)}`)
+      .set(auth());
+    expect(response.status).toBe(200);
+    expect(Buffer.isBuffer(response.body) ? response.body.toString() : response.text).toBe(
+      `solid phoenix-2${id}\nendsolid\n`,
+    );
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it.each([401, 403, 429, 502])(
+    "does not acknowledge a partial listing when a later page returns HTTP %i",
+    async (status) => {
+      const cid = newId();
+      const ids = Array.from({ length: 21 }, newId);
+      collections.set(cid, ids);
+      const enabled = await enable({ url: collectionUrl(cid), title: `Flock ${cid}`, known_ids: [] });
+      const fetchNormally = global.fetch;
+      global.fetch = vi.fn<typeof fetch>(async (input, init) => {
+        if (
+          String(input).includes(`/favorites/${cid}/designs`) &&
+          new URL(String(input)).searchParams.get("offset") === "20"
+        ) {
+          return json({ error: "provider unavailable" }, status);
+        }
+        return fetchNormally(input, init);
+      });
+      const sync = await syncOf(enabled.body.collection_id);
+      expect(await syncCollection(sync.id)).toBe("error");
+      const after = await syncOf(enabled.body.collection_id);
+      expect(after.knownIds).toEqual([]);
+      expect(after.missingChecks).toBe(0);
+      expect(after.lastError).toBeTruthy();
+      expect(await prisma.importJob.count({ where: { collectionSyncId: sync.id } })).toBe(0);
+    },
+  );
+
+  it.each([
+    { total: 21, hits: [] },
+    { total: 21, hits: [{ title: "Missing identity" }] },
+    { hits: [{ id: 123 }] },
+    { total: -1, hits: [] },
+    { total: 0, hits: [{ id: 123 }] },
+  ])("rejects malformed or incomplete listing pages: %j", async (page) => {
+    // Keep the regression bounded even against a paginator that never makes progress.
+    let calls = 0;
+    global.fetch = vi.fn<typeof fetch>(async () => {
+      if (++calls > 2) throw new TypeError("listing request budget exceeded");
+      return json(page);
+    });
+    await expect(fetchMakerworldCollectionEntries(newId())).rejects.toThrow(/collection/i);
+  });
+
+  it("reads all pages of a complete listing and exposes an explicit cap to manual imports", async () => {
+    const cid = newId();
+    const ids = Array.from({ length: 21 }, newId);
+    collections.set(cid, ids);
+    const listing = await fetchMakerworldCollectionEntries(cid);
+    expect(listing.entries.map((entry) => entry.designId)).toEqual(ids);
+    expect(listing.total).toBe(21);
+    expect(listing.truncated).toBe(false);
+    const capped = await fetchMakerworldCollectionEntries(cid, null, 3);
+    expect(capped.entries.map((entry) => entry.designId)).toEqual(ids.slice(0, 3));
+    expect(capped.truncated).toBe(true);
+  });
+
+  it("rejects repeated pages instead of looping or acknowledging missing models", async () => {
+    const ids = Array.from({ length: 20 }, newId);
+    let calls = 0;
+    global.fetch = vi.fn<typeof fetch>(async () => {
+      if (++calls > 2) throw new TypeError("listing request budget exceeded");
+      return json({ total: 60, hits: ids.map((id) => ({ id })) });
+    });
+    await expect(fetchMakerworldCollectionEntries(newId())).rejects.toThrow(/repeated/i);
+    expect(calls).toBe(2);
+  });
+
+  it("reports the listing cap instead of silently declaring a large collection up to date", async () => {
+    const cid = newId();
+    const ids = Array.from({ length: 301 }, newId);
+    collections.set(cid, ids);
+    const enabled = await enable({ url: collectionUrl(cid), title: `Flock ${cid}`, known_ids: ids.slice(0, 300) });
+    const sync = await syncOf(enabled.body.collection_id);
+    expect(await syncCollection(sync.id)).toBe("error");
+    const after = await syncOf(enabled.body.collection_id);
+    expect(after.lastError).toMatch(/incomplete|limit|300/i);
+    expect(after.knownIds).toEqual(ids.slice(0, 300));
+    expect(await prisma.importJob.count({ where: { collectionSyncId: sync.id } })).toBe(0);
+  });
+
+  it.each(["oversize", "interrupted", "unavailable"] as const)(
+    "keeps a %s download retryable without claiming a model was archived",
+    async (problem) => {
+      const cid = newId();
+      const added = newId();
+      collections.set(cid, []);
+      const enabled = await enable({ url: collectionUrl(cid), title: `Flock ${cid}`, known_ids: [] });
+      const sync = await syncOf(enabled.body.collection_id);
+      collections.set(cid, [added]);
+      downloads.set(added, problem);
+      expect(await syncCollection(sync.id)).toBe("queued");
+      const job = await prisma.importJob.findFirstOrThrow({
+        where: { collectionSyncId: sync.id },
+        include: { items: true },
+      });
+      expect(job.items[0].status).toBe("FAILED");
+      expect(job.items[0].errorMessage).toBeTruthy();
+      expect(await prisma.print.findFirst({ where: { userId, sourceExternalId: added } })).toBeNull();
+      downloads.clear();
+      const { run } = await startLinksJob(job, { retryFailed: true });
+      await run;
+      expect((await prisma.importJob.findUniqueOrThrow({ where: { id: job.id } })).failedCount).toBe(0);
+      expect(
+        await prisma.print.count({ where: { userId, sourceProvider: "makerworld", sourceExternalId: added } }),
+      ).toBe(1);
+      expect(await syncCollection(sync.id)).toBe("unchanged");
+    },
+  );
 
   it("queues each new MakerWorld model with the sync's print profile choice", async () => {
     const cid = newId();
@@ -650,6 +808,34 @@ describe("synced collections", () => {
     expect(await syncCollection(sync.id)).toBe("resumed");
     expect((await prisma.importJob.findUniqueOrThrow({ where: { id: job.id } })).status).toBe("DONE");
     expect(await prisma.print.findFirst({ where: { userId, sourceExternalId: added } })).not.toBeNull();
+  });
+
+  it("resumes a RUNNING item after its print was saved, without duplicating files or losing its collection", async () => {
+    const cid = newId();
+    const added = newId();
+    collections.set(cid, []);
+    const enabled = await enable({ url: collectionUrl(cid), title: `Flock ${cid}`, known_ids: [] });
+    const sync = await syncOf(enabled.body.collection_id);
+    collections.set(cid, [added]);
+    limited.add(added);
+    await syncCollection(sync.id);
+    limited.clear();
+    const printId = await importDirectly(added);
+    const platesBefore = await prisma.plate.findMany({ where: { printId } });
+    const job = await prisma.importJob.findFirstOrThrow({
+      where: { collectionSyncId: sync.id },
+      include: { items: true },
+    });
+    await prisma.importJobItem.update({ where: { id: job.items[0].id }, data: { status: "RUNNING" } });
+    await prisma.importJob.update({ where: { id: job.id }, data: { errorMessage: SYNC_JOB_INTERRUPTED } });
+    expect(await syncCollection(sync.id)).toBe("resumed");
+    expect((await prisma.importJobItem.findUniqueOrThrow({ where: { id: job.items[0].id } })).status).toBe("DONE");
+    expect(await prisma.print.count({ where: { userId, sourceProvider: "makerworld", sourceExternalId: added } })).toBe(
+      1,
+    );
+    expect(await prisma.plate.findMany({ where: { printId } })).toEqual(platesBefore);
+    expect(await prisma.collectionItem.count({ where: { collectionId: sync.collectionId, printId } })).toBe(1);
+    expect(await syncCollection(sync.id)).toBe("unchanged");
   });
 
   it("waits while another import of the user's is running", async () => {

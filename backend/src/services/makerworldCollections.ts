@@ -167,26 +167,39 @@ export async function fetchMakerworldCollectionEntries(
   paceMs?: number,
 ): Promise<{ total: number; entries: MakerworldCollectionEntry[]; truncated: boolean }> {
   const entries: MakerworldCollectionEntry[] = [];
+  const seen = new Set<string>();
   let total = 0;
   let offset = 0;
 
   for (;;) {
     const url = `${COLLECTION_API_BASE}/${collectionId}/designs?seed=0&collectionId=${collectionId}&limit=${COLLECTION_PAGE_SIZE}&offset=${offset}`;
-    const data = await fetchCollectionJson(url, bearerToken, paceMs);
-    if (!isRecord(data) || !Array.isArray(data.hits) || !data.hits.length) break;
-    if (typeof data.total === "number") total = data.total;
+    const data = await fetchCollectionJson(url, bearerToken, paceMs, true);
+    if (!isRecord(data) || !Array.isArray(data.hits) || !Number.isSafeInteger(data.total) || Number(data.total) < 0) {
+      throw new MakerworldCollectionFetchError("unexpected listing page");
+    }
+    total = Number(data.total);
+    if (offset + data.hits.length > total) throw new MakerworldCollectionFetchError("inconsistent listing total");
+    if (!data.hits.length) {
+      if (offset < total) throw new MakerworldCollectionFetchError("incomplete listing");
+      break;
+    }
 
     for (const hit of data.hits) {
-      if (!isRecord(hit) || hit.id == null) continue;
+      if (!isRecord(hit) || !/^[1-9]\d*$/.test(String(hit.id))) {
+        throw new MakerworldCollectionFetchError("missing or invalid model identity");
+      }
+      const designId = String(hit.id);
+      if (seen.has(designId)) throw new MakerworldCollectionFetchError("repeated model identity; retry the listing");
+      seen.add(designId);
       entries.push({
-        designId: String(hit.id),
+        designId,
         title: typeof hit.title === "string" && hit.title.trim() ? hit.title.trim() : `Design ${hit.id}`,
         cover: typeof hit.cover === "string" && hit.cover.trim() ? hit.cover.trim() : null,
       });
       if (entries.length >= maxItems) break;
     }
 
-    offset += COLLECTION_PAGE_SIZE;
+    offset += data.hits.length;
     if (entries.length >= maxItems || entries.length >= total) break;
   }
 
