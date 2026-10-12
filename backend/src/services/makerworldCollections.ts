@@ -81,7 +81,10 @@ async function fetchCollectionJson(
       redirect: "follow",
       signal: controller.signal,
     });
-    // Checked separately, unlike the other callers: without FlareSolverr a 403 falls through to MakerworldAuthError.
+    // An edge challenge does not establish that the user's session was rejected.
+    if (res.status === 403 && res.headers.get("cf-mitigated") === "challenge" && !(await isFlaresolverrEnabled())) {
+      return fail("HTTP 403: blocked by a Cloudflare challenge; the MakerWorld session may still be valid");
+    }
     if (res.status === 403 && looksLikeCloudflareBlock(res.headers) && (await isFlaresolverrEnabled())) {
       const solved = await fetchViaFlaresolverr(url, bearerToken ? `token=${bearerToken}` : null);
       if (!solved) return fail("blocked by Cloudflare");

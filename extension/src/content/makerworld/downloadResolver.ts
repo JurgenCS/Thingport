@@ -276,7 +276,7 @@ async function resolveFromPageApi(pageUrl: string): Promise<ResolvedDownload | n
 /** `profileOnly` skips the raw-files zip, for callers that need the 3MF itself. */
 export async function resolveMakerworldDownloadUrl(
   pageUrl: string,
-  { profileOnly = false } = {},
+  { profileOnly = Boolean(parseMakerworldModelUrl(pageUrl)?.requestedInstanceId) } = {},
 ): Promise<ResolvedDownload | null> {
   const viaClick = await captureViaRealClick(profileOnly).catch(() => null);
   if (viaClick) {

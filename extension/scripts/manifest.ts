@@ -29,6 +29,8 @@ export function buildManifest(target: Target, pkg: { version: string; descriptio
     },
     background: target === "firefox" ? { scripts: ["background.js"] } : { service_worker: "background.js" },
     permissions: ["storage", "cookies", "downloads"],
+    // Cookie access needs an explicit host permission; content-script matches only allow injection.
+    host_permissions: ["https://makerworld.com/*"],
     // The user's instance origin, requested at setup.
     optional_host_permissions: ["*://*/*"],
     content_scripts: [{ matches: PROVIDER_MATCHES, js: ["content.js"], run_at: "document_idle" }],

@@ -27,6 +27,7 @@ import { isSyncDue, markSchedulerStarted, nextSyncAt } from "../src/services/col
 import { setThingiverseAccessToken } from "../src/services/settingsService";
 import { checkPrintablesCollection } from "../src/services/printablesApi";
 import { findOrCreateCollectionByName } from "../src/services/collectionService";
+import * as flaresolverr from "../src/services/flaresolverr";
 
 const app = createApp();
 const stamp = Date.now();
@@ -564,6 +565,56 @@ describe("synced collections", () => {
       `solid phoenix-2${id}\nendsolid\n`,
     );
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { server: "cloudflare", "cf-mitigated": "challenge", "content-type": "text/html" },
+    { "cf-mitigated": "challenge", "content-type": "text/html" },
+  ])("reports a Cloudflare block without rejecting the session: %j", async (headers) => {
+    const cid = newId();
+    const known = newId();
+    collections.set(cid, [known]);
+    const enabled = await enable({ url: collectionUrl(cid), title: `Flock ${cid}`, known_ids: [known] });
+    const solverEnabled = vi.spyOn(flaresolverr, "isFlaresolverrEnabled").mockResolvedValue(false);
+    const solver = vi.spyOn(flaresolverr, "fetchViaFlaresolverr");
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response("<html>Challenge</html>", { status: 403, headers }));
+    global.fetch = fetchMock;
+    try {
+      const sync = await syncOf(enabled.body.collection_id);
+      expect(await syncCollection(sync.id)).toBe("error");
+      const after = await syncOf(enabled.body.collection_id);
+      expect(after.lastError).toMatch(/HTTP 403.*Cloudflare/i);
+      expect(after.lastError).not.toMatch(/expired or was rejected/);
+      expect(after.knownIds).toEqual([known]);
+      expect(after.missingChecks).toBe(0);
+      expect(await prisma.importJob.count({ where: { collectionSyncId: sync.id } })).toBe(0);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(solver).not.toHaveBeenCalled();
+    } finally {
+      solverEnabled.mockRestore();
+      solver.mockRestore();
+    }
+  });
+
+  it("keeps an application JSON 403 behind Cloudflare distinct from an edge challenge", async () => {
+    const cid = newId();
+    collections.set(cid, []);
+    const enabled = await enable({ url: collectionUrl(cid), title: `Flock ${cid}`, known_ids: [] });
+    const solverEnabled = vi.spyOn(flaresolverr, "isFlaresolverrEnabled").mockResolvedValue(false);
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify({ error: "unauthorized" }), {
+          status: 403,
+          headers: { server: "cloudflare", "content-type": "application/json" },
+        }),
+    );
+    try {
+      const sync = await syncOf(enabled.body.collection_id);
+      expect(await syncCollection(sync.id)).toBe("error");
+      expect((await syncOf(enabled.body.collection_id)).lastError).toMatch(/session has expired or was rejected/);
+    } finally {
+      solverEnabled.mockRestore();
+    }
   });
 
   it.each([401, 403, 429, 502])(
